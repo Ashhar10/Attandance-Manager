@@ -33,44 +33,51 @@ export function useWorkSession(userId: string) {
       setSession(prev => prev ? { ...prev } : prev) // force re-derive
     }, 1000)
   }, [])
+
   // Load today's active session
-  const loadSession = async () => {
+  const loadSession = useCallback(async () => {
+    if (!userId) return
     setLoading(true)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const { data: sessions, error: sErr } = await supabase
-      .from('work_sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('check_in_time', today.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    if (sErr) { setError(sErr.message); setLoading(false); return }
-
-    const activeSession = sessions?.[0] ?? null
-    setSession(activeSession)
-
-    if (activeSession) {
-      const { data: bData } = await supabase
-        .from('break_sessions')
+    try {
+      const { data: sessions, error: sErr } = await supabase
+        .from('work_sessions')
         .select('*')
-        .eq('work_session_id', activeSession.id)
-        .order('created_at', { ascending: true })
+        .eq('user_id', userId)
+        .gte('check_in_time', today.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
 
-      const allBreaks = bData ?? []
-      const openBreak = allBreaks.find(b => !b.break_end) ?? null
-      setBreaks(allBreaks)
-      setActiveBreak(openBreak)
-      setStatus(computeStatus(activeSession, openBreak))
-      if (!activeSession.check_out_time) startTicker()
-    } else {
-      setStatus('idle')
-      setStatus('idle')
+      if (sErr) throw sErr
+
+      const activeSession = sessions?.[0] ?? null
+      setSession(activeSession)
+
+      if (activeSession) {
+        const { data: bData } = await supabase
+          .from('break_sessions')
+          .select('*')
+          .eq('work_session_id', activeSession.id)
+          .order('created_at', { ascending: true })
+
+        const allBreaks = bData ?? []
+        const openBreak = allBreaks.find((b: BreakSession) => !b.break_end) ?? null
+        setBreaks(allBreaks)
+        setActiveBreak(openBreak)
+        setStatus(computeStatus(activeSession, openBreak))
+        if (!activeSession.check_out_time) startTicker()
+      } else {
+        setStatus('idle')
+      }
+    } catch (err: any) {
+      console.error('Error loading session:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }
+  }, [userId, supabase, computeStatus, startTicker])
 
   useEffect(() => {
     loadSession()
@@ -119,7 +126,7 @@ export function useWorkSession(userId: string) {
 
     const toHMS = (s: number) => {
       const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60
-      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
     }
 
     const { data, error: err } = await supabase
@@ -163,7 +170,7 @@ export function useWorkSession(userId: string) {
     const durationMs = new Date(now).getTime() - new Date(activeBreak.break_start).getTime()
     const durationSec = Math.floor(durationMs / 1000)
     const h = Math.floor(durationSec / 3600), m = Math.floor((durationSec % 3600) / 60), s = durationSec % 60
-    const duration = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    const duration = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 
     const { data, error: err } = await supabase
       .from('break_sessions')

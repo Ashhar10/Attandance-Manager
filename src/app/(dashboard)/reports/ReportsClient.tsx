@@ -31,27 +31,36 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
   const monthLabel = format(currentDate, 'MMMM yyyy')
 
   const load = useCallback(async () => {
+    if (!userId) return
     setLoading(true)
-    const [{ data: sData }, { data: lData }] = await Promise.all([
-      supabase
-        .from('work_sessions')
-        .select('*, break_sessions(*)')
-        .eq('user_id', userId)
-        .gte('check_in_time', monthStart.toISOString())
-        .lte('check_in_time', monthEnd.toISOString())
-        .order('check_in_time', { ascending: false }),
-      supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('created_at', monthStart.toISOString())
-        .lte('created_at', monthEnd.toISOString()),
-    ])
-    setSessions((sData as SessionWithBreaks[]) ?? [])
-    setLeaves(lData ?? [])
-    setLoading(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, monthStart.toISOString(), monthEnd.toISOString()])
+    try {
+      const [{ data: sData, error: sErr }, { data: lData, error: lErr }] = await Promise.all([
+        supabase
+          .from('work_sessions')
+          .select('*, break_sessions(*)')
+          .eq('user_id', userId)
+          .gte('check_in_time', monthStart.toISOString())
+          .lte('check_in_time', monthEnd.toISOString())
+          .order('check_in_time', { ascending: false }),
+        supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('user_id', userId)
+          .gte('created_at', monthStart.toISOString())
+          .lte('created_at', monthEnd.toISOString()),
+      ])
+
+      if (sErr) throw sErr
+      if (lErr) throw lErr
+
+      setSessions((sData as SessionWithBreaks[]) ?? [])
+      setLeaves(lData ?? [])
+    } catch (err: any) {
+      console.error('Error loading reports:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [userId, monthStart.toISOString(), monthEnd.toISOString(), supabase])
 
   useEffect(() => { load() }, [load])
 
