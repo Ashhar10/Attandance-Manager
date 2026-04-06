@@ -8,22 +8,21 @@ export function buildWhatsAppUrl(phoneNumber: string, message: string): string {
   return `https://wa.me/${cleaned}?text=${encoded}`
 }
 
-/**
- * Build the formatted leave request message
- */
 export function buildLeaveMessage(params: {
   employeeName: string
   employeeId?: string
+  leaveDate: string
   leaveDays: number
   reason: string
 }): string {
-  const { employeeName, employeeId, leaveDays, reason } = params
+  const { employeeName, employeeId, leaveDate, leaveDays, reason } = params
   const idLine = employeeId ? `Employee ID: ${employeeId}\n` : ''
   return (
     `Leave Request\n\n` +
     `Employee Name: ${employeeName}\n` +
     idLine +
-    `Number of Leave Days: ${leaveDays} day${leaveDays !== 1 ? 's' : ''}\n` +
+    `Date: ${leaveDate}\n` +
+    `Days: ${leaveDays}\n` +
     `Reason: ${reason}\n\n` +
     `I kindly request approval for my leave.\n` +
     `Thank you.`

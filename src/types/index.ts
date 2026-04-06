@@ -32,6 +32,7 @@ export interface BreakSession {
 export interface LeaveRequest {
   id: string
   user_id: string
+  leave_date: string
   leave_days: number
   reason: string
   created_at: string

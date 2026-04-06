@@ -43,9 +43,11 @@ CREATE TABLE IF NOT EXISTS public.break_sessions (
 CREATE TABLE IF NOT EXISTS public.leave_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  leave_days INTEGER NOT NULL CHECK (leave_days > 0),
+  leave_date DATE NOT NULL,
+  leave_days INTEGER NOT NULL DEFAULT 1 CHECK (leave_days > 0),
   reason TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, leave_date)
 );
 
 -- 5. Company Holidays
@@ -72,25 +74,30 @@ ALTER TABLE public.company_holidays ENABLE ROW LEVEL SECURITY;
 -- ================================================
 
 -- Profiles: users can read/update their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
 -- Work Sessions: users manage their own
+DROP POLICY IF EXISTS "Users manage own work sessions" ON public.work_sessions;
 CREATE POLICY "Users manage own work sessions"
   ON public.work_sessions FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Break Sessions: access via work_session ownership
+DROP POLICY IF EXISTS "Users manage own break sessions" ON public.break_sessions;
 CREATE POLICY "Users manage own break sessions"
   ON public.break_sessions FOR ALL
   USING (
@@ -109,17 +116,20 @@ CREATE POLICY "Users manage own break sessions"
   );
 
 -- Leave Requests: users manage their own
+DROP POLICY IF EXISTS "Users manage own leave requests" ON public.leave_requests;
 CREATE POLICY "Users manage own leave requests"
   ON public.leave_requests FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Company Holidays: all authenticated users can read
+DROP POLICY IF EXISTS "All users can view holidays" ON public.company_holidays;
 CREATE POLICY "All users can view holidays"
   ON public.company_holidays FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
 -- Admins can insert/update/delete holidays
+DROP POLICY IF EXISTS "Admins can manage holidays" ON public.company_holidays;
 CREATE POLICY "Admins can manage holidays"
   ON public.company_holidays FOR ALL
   USING (

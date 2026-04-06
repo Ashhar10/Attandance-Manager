@@ -16,6 +16,7 @@ interface LeaveClientProps {
 
 export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClientProps) {
   const supabase = createClient()
+  const [leaveDate, setLeaveDate] = useState<string>(format(new Date(Date.now() + 86400000), 'yyyy-MM-dd'))
   const [leaveDays, setLeaveDays] = useState<number>(1)
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -29,6 +30,7 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
   const preview = buildLeaveMessage({
     employeeName: profile.name,
     employeeId: profile.employee_id ?? undefined,
+    leaveDate: format(new Date(leaveDate), 'PPP'),
     leaveDays,
     reason: reason || '[Reason]',
   })
@@ -38,21 +40,49 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
     setError(null)
     if (!reason.trim()) { setError('Please provide a reason for leave.'); return }
     if (leaveDays < 1) { setError('Leave days must be at least 1.'); return }
+    if (!leaveDate) { setError('Please select a date.'); return }
 
     setSubmitting(true)
+
+    // Check for duplicates
+    const { data: existing, error: checkErr } = await supabase
+      .from('leave_requests')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('leave_date', leaveDate)
+      .maybeSingle()
+
+    if (checkErr) { setError(checkErr.message); setSubmitting(false); return }
+    if (existing) { setError('You have already applied for leave on this date.'); setSubmitting(false); return }
+
     const { data, error: err } = await supabase
       .from('leave_requests')
-      .insert({ user_id: userId, leave_days: leaveDays, reason: reason.trim() })
+      .insert({ 
+        user_id: userId, 
+        leave_date: leaveDate,
+        leave_days: leaveDays, 
+        reason: reason.trim() 
+      })
       .select()
       .single()
 
-    if (err) { setError(err.message); setSubmitting(false); return }
+    if (err) {
+      if (err.code === '23505') {
+        setError('You have already applied for leave on this date.')
+      } else {
+        setError(err.message)
+      }
+      setSubmitting(false)
+      return
+    }
+
     if (data) setHistory(prev => [data, ...prev])
 
     // Open WhatsApp
     const finalMsg = buildLeaveMessage({
       employeeName: profile.name,
       employeeId: profile.employee_id ?? undefined,
+      leaveDate: format(new Date(leaveDate), 'PPP'),
       leaveDays,
       reason: reason.trim(),
     })
@@ -60,7 +90,6 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
     window.open(url, '_blank')
 
     setSubmitted(true)
-    setLeaveDays(1)
     setReason('')
     setSubmitting(false)
     setTimeout(() => setSubmitted(false), 4000)
@@ -103,6 +132,18 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
             )}
 
             <form onSubmit={handleSubmit} id="leave-form" className="space-y-4">
+              <div>
+                <label className="label" htmlFor="leave-date">Date for Leave</label>
+                <input
+                  id="leave-date"
+                  type="date"
+                  value={leaveDate}
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={e => setLeaveDate(e.target.value)}
+                  className="input"
+                  required
+                />
+              </div>
               <div>
                 <label className="label" htmlFor="leave-days">Number of Leave Days</label>
                 <input

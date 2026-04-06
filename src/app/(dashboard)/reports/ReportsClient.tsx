@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { format, startOfMonth, endOfMonth, getDaysInMonth, getMonth, getYear } from 'date-fns'
+import { format, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns'
 import { formatDuration, intervalToSeconds, calcTotalBreakSeconds } from '@/lib/calculations'
 import Header from '@/components/ui/Header'
-import type { WorkSession, BreakSession, LeaveRequest, Profile } from '@/types'
-import { Download, ChevronLeft, ChevronRight, Clock, Coffee, TrendingUp, Award, FileText } from 'lucide-react'
+import type { WorkSession, BreakSession, LeaveRequest, Profile, CompanyHoliday } from '@/types'
+import { Download, Clock, Coffee, TrendingUp, Award } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import CalendarView from '@/components/dashboard/CalendarView'
 
 interface ReportsClientProps {
   userId: string
@@ -22,8 +23,10 @@ interface SessionWithBreaks extends WorkSession {
 export default function ReportsClient({ userId, profile }: ReportsClientProps) {
   const supabase = createClient()
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar')
   const [sessions, setSessions] = useState<SessionWithBreaks[]>([])
   const [leaves, setLeaves] = useState<LeaveRequest[]>([])
+  const [holidays, setHolidays] = useState<CompanyHoliday[]>([])
   const [loading, setLoading] = useState(true)
 
   const monthStart = startOfMonth(currentDate)
@@ -34,7 +37,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
     if (!userId) return
     setLoading(true)
     try {
-      const [{ data: sData, error: sErr }, { data: lData, error: lErr }] = await Promise.all([
+      const [{ data: sData, error: sErr }, { data: lData, error: lErr }, { data: hData, error: hErr }] = await Promise.all([
         supabase
           .from('work_sessions')
           .select('*, break_sessions(*)')
@@ -46,15 +49,22 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
           .from('leave_requests')
           .select('*')
           .eq('user_id', userId)
-          .gte('created_at', monthStart.toISOString())
-          .lte('created_at', monthEnd.toISOString()),
+          .gte('leave_date', format(monthStart, 'yyyy-MM-dd'))
+          .lte('leave_date', format(monthEnd, 'yyyy-MM-dd')),
+        supabase
+          .from('company_holidays')
+          .select('*')
+          .gte('date', format(monthStart, 'yyyy-MM-dd'))
+          .lte('date', format(monthEnd, 'yyyy-MM-dd')),
       ])
 
       if (sErr) throw sErr
       if (lErr) throw lErr
+      if (hErr) throw hErr
 
       setSessions((sData as SessionWithBreaks[]) ?? [])
       setLeaves(lData ?? [])
+      setHolidays(hData ?? [])
     } catch (err: any) {
       console.error('Error loading reports:', err)
     } finally {
@@ -64,14 +74,12 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
 
   useEffect(() => { load() }, [load])
 
-  const prevMonth = () => setCurrentDate(d => new Date(getYear(d), getMonth(d) - 1, 1))
-  const nextMonth = () => setCurrentDate(d => new Date(getYear(d), getMonth(d) + 1, 1))
+  const handleMonthChange = (date: Date) => setCurrentDate(date)
 
   // Aggregate stats
   const totalNetSec = sessions.reduce((acc, s) => acc + intervalToSeconds(s.net_time), 0)
   const totalBreakSec = sessions.reduce((acc, s) => acc + calcTotalBreakSeconds(s.break_sessions), 0)
   const totalOTSec = sessions.reduce((acc, s) => acc + intervalToSeconds(s.overtime), 0)
-  const totalLeave = leaves.reduce((acc, l) => acc + l.leave_days, 0)
   const workDays = sessions.filter(s => s.check_out_time).length
 
   // PDF Export
@@ -98,7 +106,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
         ['Total Net Work', formatDuration(totalNetSec)],
         ['Total Break', formatDuration(totalBreakSec)],
         ['Total Overtime', formatDuration(totalOTSec)],
-        ['Leave Days', String(totalLeave)],
+        ['Leave Records', String(leaves.length)],
       ],
       theme: 'grid',
       headStyles: { fillColor: [20, 20, 20], textColor: 255 },
@@ -139,10 +147,9 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
       doc.text('Leave Requests', 14, afterDaily)
       autoTable(doc, {
         startY: afterDaily + 5,
-        head: [['Date', 'Days', 'Reason']],
+        head: [['Date', 'Reason']],
         body: leaves.map(l => [
-          format(new Date(l.created_at), 'MMM d, yyyy'),
-          String(l.leave_days),
+          format(new Date(l.leave_date), 'MMM d, yyyy'),
           l.reason,
         ]),
         theme: 'striped',
@@ -159,31 +166,41 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
       <Header status="idle" title="Reports" />
       <div className="flex-1 p-4 sm:p-6 space-y-6 animate-fade-in">
 
-        {/* Month Navigator */}
-        <div className="flex items-center justify-between">
+        {/* Month Navigator & Export */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button id="btn-prev-month" onClick={prevMonth} className="btn-ghost btn-sm p-2 rounded-xl">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <h2 className="text-xl font-bold min-w-[160px] text-center">{monthLabel}</h2>
-            <button id="btn-next-month" onClick={nextMonth} className="btn-ghost btn-sm p-2 rounded-xl">
-              <ChevronRight className="w-4 h-4" />
+            <h2 className="text-xl font-bold min-w-[160px]">{monthLabel}</h2>
+            <div className="flex bg-bg-surface p-1 rounded-xl border border-border">
+              <button 
+                onClick={() => setViewMode('calendar')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-bg-elevated text-white shadow-sm' : 'text-text-muted hover:text-white'}`}
+              >
+                Calendar
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${viewMode === 'list' ? 'bg-bg-elevated text-white shadow-sm' : 'text-text-muted hover:text-white'}`}
+              >
+                Table
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              id="btn-download-report"
+              onClick={downloadPDF}
+              className="btn-md btn-primary flex items-center gap-2 flex-1 sm:flex-none justify-center"
+              disabled={sessions.length === 0}
+            >
+              <Download className="w-4 h-4" />
+              <span>Export PDF</span>
             </button>
           </div>
-          <button
-            id="btn-download-report"
-            onClick={downloadPDF}
-            className="btn-md btn-primary flex items-center gap-2"
-            disabled={sessions.length === 0}
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Download PDF</span>
-            <span className="sm:hidden">PDF</span>
-          </button>
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { id: 'rpt-days', icon: Clock, label: 'Work Days', value: String(workDays), color: 'text-white' },
             { id: 'rpt-net', icon: TrendingUp, label: 'Net Work', value: formatDuration(totalNetSec), color: 'text-accent-blue' },
@@ -193,65 +210,69 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
             <div key={id} id={id} className="stat-card">
               <div className="flex items-center gap-2 mb-2">
                 <Icon className={`w-4 h-4 ${color}`} />
-                <span className="stat-label">{label}</span>
+                <span className="stat-label text-[10px] sm:text-xs">{label}</span>
               </div>
-              <span className={`stat-value ${color}`}>{value}</span>
+              <span className={`stat-value text-lg sm:text-2xl ${color}`}>{value}</span>
             </div>
           ))}
         </div>
 
-        {/* Leave summary */}
-        {totalLeave > 0 && (
-          <div className="card p-4 flex items-center gap-4 border-accent-yellow/20">
-            <FileText className="w-5 h-5 text-accent-yellow shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">{totalLeave} leave day{totalLeave !== 1 ? 's' : ''} this month</p>
-              <p className="text-xs text-text-muted">{leaves.length} request{leaves.length !== 1 ? 's' : ''} submitted</p>
+        {/* Main Content: Calendar or List */}
+        {loading ? (
+          <div className="card p-20 text-center animate-pulse flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
+            <p className="text-text-muted text-sm">Loading attendance data...</p>
+          </div>
+        ) : viewMode === 'calendar' ? (
+          <div className="animate-slide-up">
+            <CalendarView 
+              currentDate={currentDate} 
+              sessions={sessions} 
+              leaves={leaves}
+              holidays={holidays}
+              onMonthChange={handleMonthChange}
+            />
+          </div>
+        ) : (
+          <div className="card overflow-hidden animate-slide-up">
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary">Monthly Breakdown</h3>
             </div>
+            {sessions.length === 0 ? (
+              <div className="p-12 text-center text-text-muted text-sm">No sessions found for {monthLabel}.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      {['Date', 'Check In', 'Check Out', 'Net Work', 'Break', 'Overtime'].map(h => (
+                        <th key={h} className="text-left px-5 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((s, i) => {
+                      const breakSec = calcTotalBreakSeconds(s.break_sessions)
+                      const otSec = intervalToSeconds(s.overtime)
+                      return (
+                        <tr key={s.id} className={`border-b border-border/50 transition-colors hover:bg-bg-elevated ${i % 2 === 0 ? '' : 'bg-bg-surface/30'}`}>
+                          <td className="px-5 py-4 font-medium whitespace-nowrap">{format(new Date(s.check_in_time), 'EEE, MMM d')}</td>
+                          <td className="px-5 py-4 font-mono text-accent-green">{format(new Date(s.check_in_time), 'hh:mm a')}</td>
+                          <td className="px-5 py-4 font-mono text-accent-red">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : <span className="text-text-muted">—</span>}</td>
+                          <td className="px-5 py-4 font-mono">{formatDuration(intervalToSeconds(s.net_time))}</td>
+                          <td className="px-5 py-4 font-mono text-accent-yellow">{formatDuration(breakSec)}</td>
+                          <td className={`px-5 py-4 font-mono ${otSec > 0 ? 'text-accent-green' : 'text-text-muted'}`}>
+                            {otSec > 0 ? formatDuration(otSec) : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
-
-        {/* Daily Table */}
-        <div className="card overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
-            <h3 className="font-semibold">Daily Breakdown</h3>
-          </div>
-          {loading ? (
-            <div className="p-8 text-center text-text-muted text-sm animate-pulse">Loading...</div>
-          ) : sessions.length === 0 ? (
-            <div className="p-8 text-center text-text-muted text-sm">No sessions found for {monthLabel}.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    {['Date', 'Check In', 'Check Out', 'Net Work', 'Break', 'Overtime'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessions.map((s, i) => {
-                    const breakSec = calcTotalBreakSeconds(s.break_sessions)
-                    const otSec = intervalToSeconds(s.overtime)
-                    return (
-                      <tr key={s.id} className={`border-b border-border/50 transition-colors hover:bg-bg-elevated ${i % 2 === 0 ? '' : 'bg-bg-surface/30'}`}>
-                        <td className="px-4 py-3 font-medium">{format(new Date(s.check_in_time), 'EEE, MMM d')}</td>
-                        <td className="px-4 py-3 font-mono text-accent-green">{format(new Date(s.check_in_time), 'hh:mm a')}</td>
-                        <td className="px-4 py-3 font-mono text-accent-red">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : <span className="text-text-muted">—</span>}</td>
-                        <td className="px-4 py-3 font-mono">{formatDuration(intervalToSeconds(s.net_time))}</td>
-                        <td className="px-4 py-3 font-mono text-accent-yellow">{formatDuration(breakSec)}</td>
-                        <td className={`px-4 py-3 font-mono ${otSec > 0 ? 'text-accent-green' : 'text-text-muted'}`}>
-                          {otSec > 0 ? formatDuration(otSec) : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )
