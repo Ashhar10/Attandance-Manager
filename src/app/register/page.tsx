@@ -22,20 +22,17 @@ export default function RegisterPage() {
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setLoading(true)
 
-    const { data, error: authErr } = await supabase.auth.signUp({ email, password })
+    const { data, error: authErr } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: {
+          full_name: name.trim()
+        }
+      }
+    })
+    
     if (authErr) { setError(authErr.message); setLoading(false); return }
-
-    if (data.user) {
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          name: name.trim(),
-          hr_whatsapp: '',
-          is_admin: false,
-        })
-      if (profileErr) { setError(profileErr.message); setLoading(false); return }
-    }
 
     router.push('/')
     router.refresh()
