@@ -27,20 +27,18 @@ export default function LiveTimer({ elapsedSeconds, status }: LiveTimerProps) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className={`timer-display text-6xl sm:text-7xl md:text-8xl font-bold tracking-widest transition-colors duration-500 ${colorMap[status]} ${glowMap[status]}`}>
+    <div className="flex flex-col items-center gap-3 w-full overflow-hidden">
+      <div className={`timer-display flex items-center justify-center gap-1 sm:gap-2 text-3xl sm:text-7xl md:text-8xl font-bold tracking-tight sm:tracking-widest transition-all duration-500 whitespace-nowrap flex-nowrap ${colorMap[status]} ${glowMap[status]}`}>
         <span>{hh}</span>
-        <span className={status === 'working' || status === 'on_break' ? 'animate-blink' : ''}> : </span>
+        <span className={`text-xl sm:text-5xl md:text-6xl pb-1 sm:pb-2 opacity-40 ${status === 'working' || status === 'on_break' ? 'animate-blink' : ''}`}>:</span>
         <span>{mm}</span>
-        <span className={status === 'working' || status === 'on_break' ? 'animate-blink' : ''}> : </span>
+        <span className={`text-xl sm:text-5xl md:text-6xl pb-1 sm:pb-2 opacity-40 ${status === 'working' || status === 'on_break' ? 'animate-blink' : ''}`}>:</span>
         <span>{ss}</span>
       </div>
-      <div className="flex gap-3 text-xs text-text-muted tracking-widest uppercase font-medium">
-        <span className="w-16 text-center">Hours</span>
-        <span className="w-4 text-center"></span>
-        <span className="w-16 text-center">Minutes</span>
-        <span className="w-4 text-center"></span>
-        <span className="w-16 text-center">Seconds</span>
+      <div className="flex justify-between w-full max-w-[240px] sm:max-w-md px-1 text-[9px] sm:text-xs text-text-muted tracking-widest uppercase font-medium">
+        <span className="flex-1 text-center">Hours</span>
+        <span className="flex-1 text-center">Minutes</span>
+        <span className="flex-1 text-center">Seconds</span>
       </div>
     </div>
   )

@@ -35,8 +35,8 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
         {/* Welcome */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 suppressHydrationWarning className="text-xl font-semibold">Good {getGreeting()}, {profile.name.split(' ')[0]} 👋</h2>
-            <p suppressHydrationWarning className="text-sm text-text-muted mt-0.5">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+            <h2 suppressHydrationWarning className="text-lg sm:text-xl font-semibold whitespace-nowrap truncate max-w-[200px] sm:max-w-none">Good {getGreeting()}, {profile.name.split(' ')[0]} 👋</h2>
+            <p suppressHydrationWarning className="text-[10px] sm:text-sm text-text-muted mt-0.5">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
           </div>
           <button
             id="btn-refresh"
