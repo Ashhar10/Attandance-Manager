@@ -70,7 +70,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
     } finally {
       setLoading(false)
     }
-  }, [userId, monthStart.toISOString(), monthEnd.toISOString(), supabase])
+  }, [userId, monthStart.toISOString(), monthEnd.toISOString()])
 
   useEffect(() => { load() }, [load])
 

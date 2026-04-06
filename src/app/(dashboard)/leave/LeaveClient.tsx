@@ -67,7 +67,9 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
       .single()
 
     if (err) {
-      if (err.code === '23505') {
+      if (err.code === '42703') {
+        setError('Database error: The "leave_date" column is missing. Please run the SQL migration I provided in your Supabase SQL Editor.')
+      } else if (err.code === '23505') {
         setError('You have already applied for leave on this date.')
       } else {
         setError(err.message)

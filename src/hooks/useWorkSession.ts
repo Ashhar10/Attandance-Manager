@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calcTotalBreakSeconds, calcWorkMetrics } from '@/lib/calculations'
 import type { WorkSession, BreakSession, WorkStatus } from '@/types'
@@ -185,11 +185,29 @@ export function useWorkSession(userId: string) {
     setStatus('working')
   }
 
-  return {
-    session, breaks, activeBreak, status,
-    elapsedWork, elapsedBreak,
-    loading, error,
-    startWork, endWork, startBreak, endBreak,
+  return useMemo(() => ({
+    session,
+    breaks,
+    activeBreak,
+    status,
+    elapsedWork,
+    elapsedBreak,
+    loading,
+    error,
+    startWork,
+    endWork,
+    startBreak,
+    endBreak,
     reload: loadSession,
-  }
+  }), [
+    session,
+    breaks,
+    activeBreak,
+    status,
+    elapsedWork,
+    elapsedBreak,
+    loading,
+    error,
+    loadSession
+  ])
 }
