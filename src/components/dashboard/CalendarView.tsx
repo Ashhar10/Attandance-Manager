@@ -11,9 +11,13 @@ import {
   isSameDay, 
   isToday,
   addMonths,
-  subMonths
+  subMonths,
+  isBefore,
+  startOfDay,
+  isSaturday,
+  isSunday
 } from 'date-fns'
-import { ChevronLeft, ChevronRight, Clock, Coffee, Home, Palmtree } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Coffee, Home, Palmtree, AlertTriangle } from 'lucide-react'
 import type { WorkSession, LeaveRequest, CompanyHoliday } from '@/types'
 
 interface CalendarViewProps {
@@ -42,6 +46,8 @@ export default function CalendarView({
     start: startDate,
     end: endDate,
   })
+
+  const startOfToday = startOfDay(new Date())
 
   const prevMonth = () => onMonthChange(subMonths(currentDate, 1))
   const nextMonth = () => onMonthChange(addMonths(currentDate, 1))
@@ -78,10 +84,13 @@ export default function CalendarView({
           {calendarDays.map((day, idx) => {
             const isSelectedMonth = isSameMonth(day, monthStart)
             const isDayToday = isToday(day)
-            
             const daySession = sessions.find(s => isSameDay(new Date(s.check_in_time), day))
             const dayLeave = leaves.find(l => isSameDay(new Date(l.leave_date), day))
             const dayHoliday = holidays.find(h => isSameDay(new Date(h.date), day))
+            
+            const isPast = isBefore(day, startOfToday)
+            const isWeekend = isSaturday(day) || isSunday(day)
+            const isUninformed = isPast && !isWeekend && !daySession && !dayLeave && !dayHoliday
 
             let bgColor = 'bg-bg-surface/50'
             let textColor = isSelectedMonth ? 'text-white' : 'text-text-muted/40'
@@ -96,6 +105,9 @@ export default function CalendarView({
             } else if (dayHoliday) {
               bgColor = 'bg-accent-blue/10'
               borderColor = 'border-accent-blue/30'
+            } else if (isUninformed) {
+              bgColor = 'bg-accent-yellow/10'
+              borderColor = 'border-accent-yellow/30'
             }
 
             if (isDayToday) {
@@ -136,6 +148,12 @@ export default function CalendarView({
                       <span>Holiday</span>
                     </div>
                   )}
+                  {isUninformed && (
+                    <div className="flex items-center gap-1 text-[9px] text-accent-yellow bg-accent-yellow/10 px-1.5 py-0.5 rounded-full">
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                      <span>Uninformed</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Mobile indicators */}
@@ -143,6 +161,7 @@ export default function CalendarView({
                   {daySession && <div className="w-1 h-1 rounded-full bg-accent-green" />}
                   {dayLeave && <div className="w-1 h-1 rounded-full bg-accent-red" />}
                   {dayHoliday && <div className="w-1 h-1 rounded-full bg-accent-blue" />}
+                  {isUninformed && <div className="w-1 h-1 rounded-full bg-accent-yellow scale-110" />}
                 </div>
               </div>
             )
@@ -151,11 +170,12 @@ export default function CalendarView({
       </div>
 
       {/* Legend */}
-      <div className="px-5 py-3 bg-bg-surface/50 border-t border-border flex flex-wrap gap-4">
+      <div className="px-5 py-3 bg-bg-surface/50 border-t border-border flex flex-wrap gap-x-4 gap-y-2">
         {[
           { label: 'Work', color: 'bg-accent-green' },
           { label: 'Leave', color: 'bg-accent-red' },
           { label: 'Holiday', color: 'bg-accent-blue' },
+          { label: 'Uninformed', color: 'bg-accent-yellow' },
           { label: 'Today', color: 'border-white/40 border' },
         ].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">

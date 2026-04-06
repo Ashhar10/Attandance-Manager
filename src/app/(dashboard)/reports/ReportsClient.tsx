@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { format, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns'
+import { format, startOfMonth, endOfMonth, getMonth, getYear, eachDayOfInterval, isBefore, startOfDay, isSaturday, isSunday, isSameDay } from 'date-fns'
 import { formatDuration, intervalToSeconds, calcTotalBreakSeconds } from '@/lib/calculations'
 import Header from '@/components/ui/Header'
 import type { WorkSession, BreakSession, LeaveRequest, Profile, CompanyHoliday } from '@/types'
-import { Download, Clock, Coffee, TrendingUp, Award } from 'lucide-react'
+import { Download, Clock, Coffee, TrendingUp, Award, AlertTriangle } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import CalendarView from '@/components/dashboard/CalendarView'
@@ -82,6 +82,26 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
   const totalOTSec = sessions.reduce((acc, s) => acc + intervalToSeconds(s.overtime), 0)
   const workDays = sessions.filter(s => s.check_out_time).length
 
+  // Calculate Uninformed Leaves
+  const startOfToday = startOfDay(new Date())
+  const rangeStart = monthStart
+  const rangeEnd = isBefore(monthEnd, startOfToday) ? monthEnd : startOfToday
+  
+  const daysInRange = eachDayOfInterval({ start: rangeStart, end: rangeEnd })
+  const uninformedLeaves = daysInRange.filter(day => {
+    const isPast = isBefore(day, startOfToday)
+    if (!isPast) return false
+    
+    const isWeekend = isSaturday(day) || isSunday(day)
+    if (isWeekend) return false
+    
+    const hasSession = sessions.some(s => isSameDay(new Date(s.check_in_time), day))
+    const hasLeave = leaves.some(l => isSameDay(new Date(l.leave_date), day))
+    const hasHoliday = holidays.some(h => isSameDay(new Date(h.date), day))
+    
+    return !hasSession && !hasLeave && !hasHoliday
+  }).length
+
   // PDF Export
   const downloadPDF = () => {
     const doc = new jsPDF()
@@ -107,6 +127,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
         ['Total Break', formatDuration(totalBreakSec)],
         ['Total Overtime', formatDuration(totalOTSec)],
         ['Leave Records', String(leaves.length)],
+        ['Uninformed Leaves', String(uninformedLeaves)],
       ],
       theme: 'grid',
       headStyles: { fillColor: [20, 20, 20], textColor: 255 },
@@ -206,6 +227,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
             { id: 'rpt-net', icon: TrendingUp, label: 'Net Work', value: formatDuration(totalNetSec), color: 'text-accent-blue' },
             { id: 'rpt-break', icon: Coffee, label: 'Total Break', value: formatDuration(totalBreakSec), color: 'text-accent-yellow' },
             { id: 'rpt-ot', icon: Award, label: 'Overtime', value: formatDuration(totalOTSec), color: totalOTSec > 0 ? 'text-accent-green' : 'text-text-muted' },
+            { id: 'rpt-uninformed', icon: AlertTriangle, label: 'Uninformed', value: String(uninformedLeaves), color: uninformedLeaves > 0 ? 'text-accent-yellow' : 'text-text-muted' },
           ].map(({ id, icon: Icon, label, value, color }) => (
             <div key={id} id={id} className="stat-card">
               <div className="flex items-center gap-2 mb-2">
