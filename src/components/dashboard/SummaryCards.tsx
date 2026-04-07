@@ -23,6 +23,7 @@ export default function SummaryCards({ session, breaks, elapsedWork, elapsedBrea
   )
 
   const netPct = Math.min(100, (netWorkSeconds / STANDARD_WORK_SECONDS) * 100)
+  const totalPct = Math.min(100, (elapsedWork / (9 * 3600)) * 100)
 
   const cards = [
     {
@@ -45,6 +46,19 @@ export default function SummaryCards({ session, breaks, elapsedWork, elapsedBrea
       label: 'Total Time',
       value: formatDuration(elapsedWork),
       color: 'text-white',
+      extra: (
+        <div className="mt-3">
+          <div className="flex justify-between text-[10px] text-text-muted mb-1">
+            <span>{Math.round(totalPct)}% of 9h shift</span>
+          </div>
+          <div className="h-1.5 bg-bg-surface rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white/20 rounded-full transition-all duration-1000"
+              style={{ width: `${totalPct}%` }}
+            />
+          </div>
+        </div>
+      ),
     },
     {
       id: 'card-break',
@@ -62,7 +76,7 @@ export default function SummaryCards({ session, breaks, elapsedWork, elapsedBrea
       extra: (
         <div className="mt-3">
           <div className="flex justify-between text-xs text-text-muted mb-1">
-            <span>{Math.round(netPct)}% of 9h</span>
+            <span>{Math.round(netPct)}% of 8h</span>
             <span>{formatDurationHuman(STANDARD_WORK_SECONDS - netWorkSeconds > 0 ? STANDARD_WORK_SECONDS - netWorkSeconds : 0)} left</span>
           </div>
           <div className="h-1.5 bg-bg-surface rounded-full overflow-hidden">

@@ -1,4 +1,4 @@
-const STANDARD_HOURS = 9 * 3600 // 9 hours in seconds
+const STANDARD_HOURS = 8 * 3600 // 8 hours in seconds
 
 /**
  * Parse a PostgreSQL interval string like "01:30:00" or "00:00:30" to seconds
