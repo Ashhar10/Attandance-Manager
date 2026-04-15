@@ -38,21 +38,39 @@ export function useWorkSession(userId: string) {
   const loadSession = useCallback(async () => {
     if (!userId) return
     setLoading(true)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
 
     try {
       const { data: sessions, error: sErr } = await supabase
         .from('work_sessions')
         .select('*')
         .eq('user_id', userId)
-        .gte('check_in_time', today.toISOString())
         .order('created_at', { ascending: false })
         .limit(1)
 
       if (sErr) throw sErr
 
-      const activeSession = sessions?.[0] ?? null
+      const lastSession = sessions?.[0] ?? null
+      let activeSession = null
+
+      if (lastSession) {
+        if (!lastSession.check_out_time) {
+          // Keep the session active even if it crosses midnight
+          activeSession = lastSession
+        } else {
+          // If it is completed, only show it as today's session if it overlaps with today
+          const checkIn = new Date(lastSession.check_in_time)
+          const checkOut = new Date(lastSession.check_out_time)
+          const today = new Date()
+          
+          if (
+            checkIn.toDateString() === today.toDateString() ||
+            checkOut.toDateString() === today.toDateString()
+          ) {
+            activeSession = lastSession
+          }
+        }
+      }
+
       setSession(activeSession)
 
       if (activeSession) {
@@ -96,7 +114,7 @@ export function useWorkSession(userId: string) {
   // ---- Actions ----
 
   const startWork = async () => {
-    if (session) return
+    if (session && !session.check_out_time) return
     setError(null)
     const now = new Date().toISOString()
     const { data, error: err } = await supabase

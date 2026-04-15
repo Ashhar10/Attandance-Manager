@@ -6,6 +6,7 @@ import { Play, Square, Coffee, StopCircle } from 'lucide-react'
 interface ActionButtonsProps {
   status: WorkStatus
   loading?: boolean
+  elapsedWork: number
   onStartWork: () => void
   onEndWork: () => void
   onStartBreak: () => void
@@ -13,7 +14,7 @@ interface ActionButtonsProps {
 }
 
 export default function ActionButtons({
-  status, loading,
+  status, loading, elapsedWork,
   onStartWork, onEndWork, onStartBreak, onEndBreak,
 }: ActionButtonsProps) {
   return (
@@ -23,7 +24,7 @@ export default function ActionButtons({
         id="btn-start-work"
         className="btn-lg btn-success"
         onClick={onStartWork}
-        disabled={loading || status !== 'idle'}
+        disabled={loading || (status !== 'idle' && !(status === 'completed' && elapsedWork >= 9 * 3600))}
         aria-label="Start Work"
       >
         <Play className="w-5 h-5" />

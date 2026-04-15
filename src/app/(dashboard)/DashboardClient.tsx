@@ -99,6 +99,7 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
           <ActionButtons
             status={status}
             loading={loading}
+            elapsedWork={elapsedWork}
             onStartWork={startWork}
             onEndWork={endWork}
             onStartBreak={startBreak}
