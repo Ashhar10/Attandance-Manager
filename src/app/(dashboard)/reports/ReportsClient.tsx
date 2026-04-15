@@ -71,6 +71,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
     } finally {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, monthStart.toISOString(), monthEnd.toISOString()])
 
   useEffect(() => { load() }, [load])
@@ -375,7 +376,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
                                 <div className="bg-bg-elevated p-3 rounded-lg border border-border mt-2 relative">
                                   <MessageSquare className="w-4 h-4 text-text-muted absolute top-3 right-3 opacity-30" />
                                   <p className="text-xs text-text-muted uppercase mb-1">Reason</p>
-                                  <p className="text-sm text-white italic">"{session.overtime_message}"</p>
+                                  <p className="text-sm text-white italic">&quot;{session.overtime_message}&quot;</p>
                                 </div>
                               )}
                             </div>

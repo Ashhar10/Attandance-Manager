@@ -223,6 +223,7 @@ export function useWorkSession(userId: string) {
     startBreak,
     endBreak,
     reload: loadSession,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [
     session,
     breaks,
