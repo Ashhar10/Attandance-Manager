@@ -6,7 +6,7 @@ import { format, startOfMonth, endOfMonth, getMonth, getYear, eachDayOfInterval,
 import { formatDuration, intervalToSeconds, calcTotalBreakSeconds } from '@/lib/calculations'
 import Header from '@/components/ui/Header'
 import type { WorkSession, BreakSession, LeaveRequest, Profile, CompanyHoliday } from '@/types'
-import { Download, Clock, Coffee, TrendingUp, Award, AlertTriangle } from 'lucide-react'
+import { Download, Clock, Coffee, TrendingUp, Award, AlertTriangle, X, Palmtree, Home, MessageSquare } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import CalendarView from '@/components/dashboard/CalendarView'
@@ -28,6 +28,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([])
   const [holidays, setHolidays] = useState<CompanyHoliday[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -253,6 +254,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
               leaves={leaves}
               holidays={holidays}
               onMonthChange={handleMonthChange}
+              onDateClick={(date) => setSelectedDate(date)}
             />
           </div>
         ) : (
@@ -296,6 +298,132 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
           </div>
         )}
       </div>
+
+      {/* Date Details Modal */}
+      {selectedDate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+          <div className="card w-full max-w-md p-6 flex flex-col max-h-[90vh] overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-border">
+              <h3 className="text-xl font-bold flex flex-col">
+                <span className="text-white">{format(selectedDate, 'EEEE')}</span>
+                <span className="text-sm text-text-muted">{format(selectedDate, 'MMMM d, yyyy')}</span>
+              </h3>
+              <button onClick={() => setSelectedDate(null)} className="p-2 -mr-2 text-text-muted hover:text-white transition-colors bg-bg-surface rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-4 space-y-6 overflow-y-auto pr-1">
+              {(() => {
+                const daySessions = sessions.filter(s => isSameDay(new Date(s.check_in_time), selectedDate))
+                const dayLeave = leaves.find(l => isSameDay(new Date(l.leave_date), selectedDate))
+                const dayHoliday = holidays.find(h => isSameDay(new Date(h.date), selectedDate))
+
+                const isWeekend = isSaturday(selectedDate) || isSunday(selectedDate)
+                const isPast = isBefore(selectedDate, startOfDay(new Date()))
+                const isEmpty = daySessions.length === 0 && !dayLeave && !dayHoliday
+
+                return (
+                  <>
+                    {daySessions.map((session, idx) => {
+                      const breakSec = calcTotalBreakSeconds(session.break_sessions)
+                      const otSec = intervalToSeconds(session.overtime)
+                      
+                      return (
+                        <div key={session.id} className="bg-bg-surface p-4 rounded-xl border border-border/50 space-y-4">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-text-muted font-medium tracking-widest uppercase text-xs">Work Session {daySessions.length > 1 ? `#${idx + 1}` : ''}</span>
+                            {session.check_out_time ? (
+                              <span className="px-2 py-0.5 rounded-full bg-accent-green/10 text-accent-green text-[10px] font-bold">COMPLETED</span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue text-[10px] font-bold">ACTIVE</span>
+                            )}
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-[10px] text-text-muted uppercase mb-1">Check In</p>
+                              <p className="font-mono text-sm text-white">{format(new Date(session.check_in_time), 'hh:mm a')}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-text-muted uppercase mb-1">Check Out</p>
+                              <p className="font-mono text-sm text-white">{session.check_out_time ? format(new Date(session.check_out_time), 'hh:mm a') : '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-text-muted uppercase mb-1">Net Work</p>
+                              <p className="font-mono text-sm text-white">{formatDuration(intervalToSeconds(session.net_time))}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-text-muted uppercase mb-1">Break Time</p>
+                              <p className="font-mono text-sm text-accent-yellow">{formatDuration(breakSec)}</p>
+                            </div>
+                          </div>
+
+                          {otSec > 0 && (
+                            <div className="mt-4 pt-4 border-t border-border/50">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="flex items-center gap-1.5 text-xs font-semibold text-accent-green">
+                                  <Award className="w-3.5 h-3.5" />
+                                  Overtime
+                                </span>
+                                <span className="font-mono text-xs text-accent-green bg-accent-green/10 px-2 py-0.5 rounded">{formatDuration(otSec)}</span>
+                              </div>
+                              {session.overtime_message && (
+                                <div className="bg-bg-elevated p-3 rounded-lg border border-border mt-2 relative">
+                                  <MessageSquare className="w-4 h-4 text-text-muted absolute top-3 right-3 opacity-30" />
+                                  <p className="text-xs text-text-muted uppercase mb-1">Reason</p>
+                                  <p className="text-sm text-white italic">"{session.overtime_message}"</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {dayLeave && (
+                      <div className="bg-accent-red/5 border border-accent-red/20 p-4 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2 text-accent-red font-semibold mb-2">
+                          <Palmtree className="w-5 h-5" /> Leave Request
+                        </div>
+                        <p className="text-xs text-text-muted uppercase">Reason</p>
+                        <p className="text-sm text-white leading-relaxed">{dayLeave.reason}</p>
+                      </div>
+                    )}
+
+                    {dayHoliday && (
+                      <div className="bg-accent-blue/5 border border-accent-blue/20 p-4 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2 text-accent-blue font-semibold mb-2">
+                          <Home className="w-5 h-5" /> Company Holiday
+                        </div>
+                        <p className="text-white font-medium">{dayHoliday.title}</p>
+                        {dayHoliday.description && <p className="text-sm text-text-muted leading-relaxed">{dayHoliday.description}</p>}
+                      </div>
+                    )}
+
+                    {isEmpty && (
+                      <div className="text-center p-8 space-y-3">
+                        <div className="inline-flex w-12 h-12 bg-bg-surface rounded-full items-center justify-center border border-border">
+                          {isWeekend ? <Home className="w-5 h-5 text-text-muted" /> : <AlertTriangle className="w-5 h-5 text-text-muted" />}
+                        </div>
+                        <div>
+                          <p className="text-white font-semibold">{isWeekend ? 'Weekend' : 'No Records'}</p>
+                          <p className="text-sm text-text-muted mt-1">
+                            {isWeekend ? 'Enjoy your weekend!' : isPast ? 'There are no attendance records or leaves filed for this date.' : 'This date is in the future.'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

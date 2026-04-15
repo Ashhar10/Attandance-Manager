@@ -131,7 +131,7 @@ export function useWorkSession(userId: string) {
     startTicker()
   }
 
-  const endWork = async () => {
+  const endWork = async (overtime_message?: string) => {
     if (!session || session.check_out_time) return
     if (activeBreak) { setError('Please end your break before ending work.'); return }
     setError(null)
@@ -147,14 +147,20 @@ export function useWorkSession(userId: string) {
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
     }
 
+    const updatePayload: any = {
+      check_out_time: now,
+      total_time: toHMS(totalSeconds),
+      net_time: toHMS(netWorkSeconds),
+      overtime: toHMS(overtimeSeconds),
+    }
+
+    if (overtime_message) {
+      updatePayload.overtime_message = overtime_message
+    }
+
     const { data, error: err } = await supabase
       .from('work_sessions')
-      .update({
-        check_out_time: now,
-        total_time: toHMS(totalSeconds),
-        net_time: toHMS(netWorkSeconds),
-        overtime: toHMS(overtimeSeconds),
-      })
+      .update(updatePayload)
       .eq('id', session.id)
       .select()
       .single()

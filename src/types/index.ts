@@ -17,6 +17,7 @@ export interface WorkSession {
   total_time: string | null
   net_time: string | null
   overtime: string | null
+  overtime_message: string | null
   created_at: string
 }
 

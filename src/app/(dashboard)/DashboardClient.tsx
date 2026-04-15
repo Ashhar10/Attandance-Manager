@@ -1,15 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import { useWorkSession } from '@/hooks/useWorkSession'
 import LiveTimer from '@/components/dashboard/LiveTimer'
 import StatusBadge from '@/components/dashboard/StatusBadge'
 import ActionButtons from '@/components/dashboard/ActionButtons'
 import SummaryCards from '@/components/dashboard/SummaryCards'
 import Header from '@/components/ui/Header'
-import { formatDuration, calcTotalBreakSeconds } from '@/lib/calculations'
+import { formatDuration, calcTotalBreakSeconds, STANDARD_WORK_SECONDS } from '@/lib/calculations'
 import { format } from 'date-fns'
 import type { Profile } from '@/types'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, RefreshCw, X } from 'lucide-react'
 
 interface DashboardClientProps {
   userId: string
@@ -17,6 +18,9 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ userId, profile }: DashboardClientProps) {
+  const [showOvertimeModal, setShowOvertimeModal] = useState(false)
+  const [overtimeMessage, setOvertimeMessage] = useState('')
+
   const {
     session, breaks, activeBreak, status,
     elapsedWork, elapsedBreak,
@@ -26,6 +30,22 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
   } = useWorkSession(userId)
 
   const totalBreakText = formatDuration(calcTotalBreakSeconds(breaks))
+
+  const handleEndWorkClick = () => {
+    const netSeconds = elapsedWork - elapsedBreak
+    if (netSeconds > STANDARD_WORK_SECONDS) {
+      setShowOvertimeModal(true)
+    } else {
+      endWork()
+    }
+  }
+
+  const handleConfirmOvertime = async () => {
+    if (!overtimeMessage.trim()) return
+    await endWork(overtimeMessage)
+    setShowOvertimeModal(false)
+    setOvertimeMessage('')
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -101,7 +121,7 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
             loading={loading}
             elapsedWork={elapsedWork}
             onStartWork={startWork}
-            onEndWork={endWork}
+            onEndWork={handleEndWorkClick}
             onStartBreak={startBreak}
             onEndBreak={endBreak}
           />
@@ -128,6 +148,44 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
           </div>
         )}
       </div>
+
+      {/* Overtime Modal */}
+      {showOvertimeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+          <div className="card w-full max-w-md p-6 animate-slide-up flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white">Overtime Log</h3>
+              <button onClick={() => setShowOvertimeModal(false)} className="text-text-muted hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-text-muted mb-4">
+              Why did you do overtime today? Please provide a brief reason for your extra hours.
+            </p>
+            <textarea 
+              value={overtimeMessage}
+              onChange={(e) => setOvertimeMessage(e.target.value)}
+              placeholder="E.g., Finished the critical project deploy..."
+              className="w-full bg-bg-surface border border-border p-3 rounded-xl text-sm outline-none focus:border-accent-blue transition-colors resize-none h-24 mb-6"
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowOvertimeModal(false)}
+                className="btn-md btn-ghost"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmOvertime}
+                className="btn-md btn-primary"
+                disabled={!overtimeMessage.trim()}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
