@@ -7,6 +7,8 @@ interface ActionButtonsProps {
   status: WorkStatus
   loading?: boolean
   elapsedWork: number
+  hasActiveUnfinishedSession: boolean
+  lastSessionCheckIn: string | null
   onStartWork: () => void
   onEndWork: () => void
   onStartBreak: () => void
@@ -15,8 +17,12 @@ interface ActionButtonsProps {
 
 export default function ActionButtons({
   status, loading, elapsedWork,
+  hasActiveUnfinishedSession, lastSessionCheckIn,
   onStartWork, onEndWork, onStartBreak, onEndBreak,
 }: ActionButtonsProps) {
+  
+  const canStartWork = !hasActiveUnfinishedSession && (!lastSessionCheckIn || (Date.now() - new Date(lastSessionCheckIn).getTime()) >= 9 * 3600 * 1000)
+
   return (
     <div className="flex flex-wrap gap-3 justify-center">
       {/* Start Work */}
@@ -24,7 +30,7 @@ export default function ActionButtons({
         id="btn-start-work"
         className="btn-lg btn-success"
         onClick={onStartWork}
-        disabled={loading || (status !== 'idle' && !(status === 'completed' && elapsedWork >= 9 * 3600))}
+        disabled={loading || !canStartWork}
         aria-label="Start Work"
       >
         <Play className="w-5 h-5" />

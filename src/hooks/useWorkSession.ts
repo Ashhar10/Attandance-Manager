@@ -16,6 +16,10 @@ export function useWorkSession(userId: string) {
   const [elapsedBreak, setElapsedBreak] = useState(0) // seconds
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const [lastSessionCheckIn, setLastSessionCheckIn] = useState<string | null>(null)
+  const [hasActiveUnfinishedSession, setHasActiveUnfinishedSession] = useState(false)
+  
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Derive status from session + activeBreak
@@ -51,20 +55,27 @@ export function useWorkSession(userId: string) {
 
       const lastSession = sessions?.[0] ?? null
       let activeSession = null
+      
+      if (lastSession) {
+        setLastSessionCheckIn(lastSession.check_in_time)
+        setHasActiveUnfinishedSession(!lastSession.check_out_time)
+      } else {
+        setLastSessionCheckIn(null)
+        setHasActiveUnfinishedSession(false)
+      }
 
       if (lastSession) {
         if (!lastSession.check_out_time) {
           // Keep the session active even if it crosses midnight
           activeSession = lastSession
         } else {
-          // If it is completed, only show it as today's session if it overlaps with today
+          // Only show it as today's session if it STARTED today.
+          // Sessions ending on the next day count for the previous day.
           const checkIn = new Date(lastSession.check_in_time)
-          const checkOut = new Date(lastSession.check_out_time)
           const today = new Date()
           
           if (
-            checkIn.toDateString() === today.toDateString() ||
-            checkOut.toDateString() === today.toDateString()
+            checkIn.toDateString() === today.toDateString()
           ) {
             activeSession = lastSession
           }
@@ -218,6 +229,8 @@ export function useWorkSession(userId: string) {
     elapsedBreak,
     loading,
     error,
+    lastSessionCheckIn,
+    hasActiveUnfinishedSession,
     startWork,
     endWork,
     startBreak,
@@ -233,6 +246,8 @@ export function useWorkSession(userId: string) {
     elapsedBreak,
     loading,
     error,
+    lastSessionCheckIn,
+    hasActiveUnfinishedSession,
     loadSession
   ])
 }

@@ -25,6 +25,7 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
     session, breaks, activeBreak, status,
     elapsedWork, elapsedBreak,
     loading, error,
+    lastSessionCheckIn, hasActiveUnfinishedSession,
     startWork, endWork, startBreak, endBreak,
     reload,
   } = useWorkSession(userId)
@@ -120,6 +121,8 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
             status={status}
             loading={loading}
             elapsedWork={elapsedWork}
+            hasActiveUnfinishedSession={hasActiveUnfinishedSession}
+            lastSessionCheckIn={lastSessionCheckIn}
             onStartWork={startWork}
             onEndWork={handleEndWorkClick}
             onStartBreak={startBreak}
