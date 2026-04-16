@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import type { WorkStatus } from '@/types'
 import { Play, Square, Coffee, StopCircle } from 'lucide-react'
 
@@ -21,7 +22,15 @@ export default function ActionButtons({
   onStartWork, onEndWork, onStartBreak, onEndBreak,
 }: ActionButtonsProps) {
   
-  const canStartWork = !hasActiveUnfinishedSession && (!lastSessionCheckIn || (Date.now() - new Date(lastSessionCheckIn).getTime()) >= 9 * 3600 * 1000)
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    // Re-evaluate time every 10 seconds to unlock the button dynamically
+    const int = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(int);
+  }, []);
+
+  const canStartWork = !hasActiveUnfinishedSession && (!lastSessionCheckIn || (now - new Date(lastSessionCheckIn).getTime()) >= 9 * 3600 * 1000)
 
   return (
     <div className="flex flex-wrap gap-3 justify-center">
