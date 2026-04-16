@@ -124,13 +124,16 @@ export function useWorkSession(userId: string) {
 
   // ---- Actions ----
 
-  const startWork = async () => {
+  const startWork = async (off_day_message?: string) => {
     if (session && !session.check_out_time) return
     setError(null)
     const now = new Date().toISOString()
+    const payload: any = { user_id: userId, check_in_time: now }
+    if (off_day_message) payload.off_day_message = off_day_message
+
     const { data, error: err } = await supabase
       .from('work_sessions')
-      .insert({ user_id: userId, check_in_time: now })
+      .insert(payload)
       .select()
       .single()
 

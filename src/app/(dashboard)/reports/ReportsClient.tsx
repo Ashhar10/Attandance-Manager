@@ -381,6 +381,20 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
                               )}
                             </div>
                           )}
+
+                          {session.off_day_message && (
+                            <div className="mt-4 pt-4 border-t border-border/50">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-accent-yellow mb-2">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Off-Day Work
+                              </div>
+                              <div className="bg-bg-elevated p-3 rounded-lg border border-border mt-2 relative">
+                                <MessageSquare className="w-4 h-4 text-text-muted absolute top-3 right-3 opacity-30" />
+                                <p className="text-xs text-text-muted uppercase mb-1">Reason</p>
+                                <p className="text-sm text-white italic">&quot;{session.off_day_message}&quot;</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })}

@@ -7,7 +7,7 @@ import StatusBadge from '@/components/dashboard/StatusBadge'
 import ActionButtons from '@/components/dashboard/ActionButtons'
 import SummaryCards from '@/components/dashboard/SummaryCards'
 import Header from '@/components/ui/Header'
-import { formatDuration, calcTotalBreakSeconds, STANDARD_WORK_SECONDS } from '@/lib/calculations'
+import { formatDuration, calcTotalBreakSeconds, STANDARD_WORK_SECONDS, isOffDay } from '@/lib/calculations'
 import { format } from 'date-fns'
 import type { Profile } from '@/types'
 import { AlertCircle, RefreshCw, X } from 'lucide-react'
@@ -20,6 +20,8 @@ interface DashboardClientProps {
 export default function DashboardClient({ userId, profile }: DashboardClientProps) {
   const [showOvertimeModal, setShowOvertimeModal] = useState(false)
   const [overtimeMessage, setOvertimeMessage] = useState('')
+  const [showOffDayModal, setShowOffDayModal] = useState(false)
+  const [offDayMessage, setOffDayMessage] = useState('')
 
   const {
     session, breaks, activeBreak, status,
@@ -29,6 +31,21 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
     startWork, endWork, startBreak, endBreak,
     reload,
   } = useWorkSession(userId)
+
+  const handleStartWorkClick = () => {
+    if (isOffDay(new Date())) {
+      setShowOffDayModal(true)
+    } else {
+      startWork()
+    }
+  }
+
+  const handleConfirmOffDay = async () => {
+    if (!offDayMessage.trim()) return
+    await startWork(offDayMessage)
+    setShowOffDayModal(false)
+    setOffDayMessage('')
+  }
 
   const totalBreakText = formatDuration(calcTotalBreakSeconds(breaks))
 
@@ -123,7 +140,7 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
             elapsedWork={elapsedWork}
             hasActiveUnfinishedSession={hasActiveUnfinishedSession}
             lastSessionCheckIn={lastSessionCheckIn}
-            onStartWork={startWork}
+            onStartWork={handleStartWorkClick}
             onEndWork={handleEndWorkClick}
             onStartBreak={startBreak}
             onEndBreak={endBreak}
@@ -184,6 +201,44 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
                 disabled={!overtimeMessage.trim()}
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Off-Day Modal */}
+      {showOffDayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+          <div className="card w-full max-w-md p-6 animate-slide-up flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white">Off-Day Log</h3>
+              <button onClick={() => setShowOffDayModal(false)} className="text-text-muted hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-text-muted mb-4">
+              It looks like today is an off-day or weekend. Why are you working today?
+            </p>
+            <textarea 
+              value={offDayMessage}
+              onChange={(e) => setOffDayMessage(e.target.value)}
+              placeholder="E.g., Catching up on backlog items..."
+              className="w-full bg-bg-surface border border-border p-3 rounded-xl text-sm outline-none focus:border-accent-blue transition-colors resize-none h-24 mb-6"
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowOffDayModal(false)}
+                className="btn-md btn-ghost"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmOffDay}
+                className="btn-md btn-primary"
+                disabled={!offDayMessage.trim()}
+              >
+                Start Session
               </button>
             </div>
           </div>
