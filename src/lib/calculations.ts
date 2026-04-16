@@ -102,12 +102,8 @@ export const STANDARD_WORK_SECONDS = STANDARD_HOURS
 export function isOffDay(date: Date): boolean {
   if (isSunday(date)) return true
   if (isSaturday(date)) {
-    // Anchor Saturday: 2026-04-18 (ON)
-    const anchor = new Date(2026, 3, 18) // Month is 0-indexed
-    const weeks = Math.abs(differenceInCalendarWeeks(date, anchor))
-    // If weeks difference is even, it's the same "type" as anchor (ON)
-    // If weeks difference is odd, it's the other "type" (OFF)
-    return weeks % 2 !== 0
+    const nth = Math.ceil(date.getDate() / 7)
+    return nth === 2 || nth === 4
   }
   return false
 }

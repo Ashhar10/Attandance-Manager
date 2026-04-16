@@ -19,12 +19,14 @@ import {
 } from 'date-fns'
 import { ChevronLeft, ChevronRight, Clock, Coffee, Home, Palmtree, AlertTriangle } from 'lucide-react'
 import type { WorkSession, LeaveRequest, CompanyHoliday } from '@/types'
+import { isOffDay } from '@/lib/calculations'
 
 interface CalendarViewProps {
   currentDate: Date
   sessions: WorkSession[]
   leaves: LeaveRequest[]
   holidays: CompanyHoliday[]
+  firstEntryDate: Date | null
   onDateClick?: (date: Date) => void
   onMonthChange: (date: Date) => void
 }
@@ -34,6 +36,7 @@ export default function CalendarView({
   sessions, 
   leaves, 
   holidays, 
+  firstEntryDate,
   onDateClick,
   onMonthChange
 }: CalendarViewProps) {
@@ -89,8 +92,16 @@ export default function CalendarView({
             const dayHoliday = holidays.find(h => isSameDay(new Date(h.date), day))
             
             const isPast = isBefore(day, startOfToday)
-            const isWeekend = isSaturday(day) || isSunday(day)
-            const isUninformed = isPast && !isWeekend && !daySession && !dayLeave && !dayHoliday
+            const isOffWork = isOffDay(day)
+            
+            // Logic for "Uninformed" matches ReportsClient
+            const dayDate = day.getDate()
+            const dayMonth = day.getMonth()
+            const isApril2Or4 = dayMonth === 3 && (dayDate === 2 || dayDate === 4)
+            const isUninformed = isPast && !daySession && !dayLeave && !dayHoliday && 
+                               (isApril2Or4 || (firstEntryDate && !isBefore(day, startOfDay(firstEntryDate)) && !isOffWork))
+            
+            const isNoData = isPast && !daySession && !dayLeave && !dayHoliday && !isUninformed && !isOffWork
 
             let bgColor = 'bg-bg-surface/50'
             let textColor = isSelectedMonth ? 'text-white' : 'text-text-muted/40'
@@ -108,6 +119,11 @@ export default function CalendarView({
             } else if (isUninformed) {
               bgColor = 'bg-accent-yellow/10'
               borderColor = 'border-accent-yellow/30'
+              textColor = 'text-accent-yellow'
+            } else if (isNoData) {
+              bgColor = 'bg-bg-surface/30'
+              borderColor = 'border-border/50'
+              textColor = 'text-text-muted/60'
             }
 
             if (isDayToday) {
@@ -154,6 +170,11 @@ export default function CalendarView({
                       <span>Uninformed</span>
                     </div>
                   )}
+                  {isNoData && (
+                    <div className="flex items-center gap-1 text-[9px] text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded-full text-center">
+                      <span>No Data</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Mobile indicators */}
@@ -162,6 +183,7 @@ export default function CalendarView({
                   {dayLeave && <div className="w-1 h-1 rounded-full bg-accent-red" />}
                   {dayHoliday && <div className="w-1 h-1 rounded-full bg-accent-blue" />}
                   {isUninformed && <div className="w-1 h-1 rounded-full bg-accent-yellow scale-110" />}
+                  {isNoData && <div className="w-1 h-1 rounded-full bg-text-muted/40" />}
                 </div>
               </div>
             )
@@ -176,6 +198,7 @@ export default function CalendarView({
           { label: 'Leave', color: 'bg-accent-red' },
           { label: 'Holiday', color: 'bg-accent-blue' },
           { label: 'Uninformed', color: 'bg-accent-yellow' },
+          { label: 'No Data', color: 'bg-text-muted/40' },
           { label: 'Today', color: 'border-white/40 border' },
         ].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">

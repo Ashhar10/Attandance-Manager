@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calcTotalBreakSeconds, calcWorkMetrics } from '@/lib/calculations'
-import type { WorkSession, BreakSession, WorkStatus } from '@/types'
+import type { WorkSession, BreakSession, WorkStatus, CompanyHoliday } from '@/types'
 
 export function useWorkSession(userId: string) {
   const supabase = createClient()
@@ -12,6 +12,7 @@ export function useWorkSession(userId: string) {
   const [breaks, setBreaks] = useState<BreakSession[]>([])
   const [activeBreak, setActiveBreak] = useState<BreakSession | null>(null)
   const [status, setStatus] = useState<WorkStatus>('idle')
+  const [holidays, setHolidays] = useState<CompanyHoliday[]>([])
   const [elapsedWork, setElapsedWork] = useState(0)   // seconds
   const [elapsedBreak, setElapsedBreak] = useState(0) // seconds
   const [loading, setLoading] = useState(true)
@@ -50,6 +51,13 @@ export function useWorkSession(userId: string) {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
+
+      const { data: hData } = await supabase
+        .from('company_holidays')
+        .select('*')
+        .eq('date', new Date().toISOString().split('T')[0])
+
+      setHolidays(hData ?? [])
 
       if (sErr) throw sErr
 
@@ -239,6 +247,7 @@ export function useWorkSession(userId: string) {
     startBreak,
     endBreak,
     reload: loadSession,
+    holidays,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [
     session,
@@ -251,6 +260,7 @@ export function useWorkSession(userId: string) {
     error,
     lastSessionCheckIn,
     hasActiveUnfinishedSession,
-    loadSession
+    loadSession,
+    holidays
   ])
 }

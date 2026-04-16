@@ -29,11 +29,11 @@ export default function DashboardClient({ userId, profile }: DashboardClientProp
     loading, error,
     lastSessionCheckIn, hasActiveUnfinishedSession,
     startWork, endWork, startBreak, endBreak,
-    reload,
+    reload, holidays,
   } = useWorkSession(userId)
 
   const handleStartWorkClick = () => {
-    if (isOffDay(new Date())) {
+    if (isOffDay(new Date()) || holidays.length > 0) {
       setShowOffDayModal(true)
     } else {
       startWork()

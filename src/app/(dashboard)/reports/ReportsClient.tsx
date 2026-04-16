@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, getMonth, getYear, eachDayOfInterval, isBefore, startOfDay, isSaturday, isSunday, isSameDay } from 'date-fns'
-import { formatDuration, intervalToSeconds, calcTotalBreakSeconds } from '@/lib/calculations'
+import { formatDuration, intervalToSeconds, calcTotalBreakSeconds, isOffDay } from '@/lib/calculations'
 import Header from '@/components/ui/Header'
 import type { WorkSession, BreakSession, LeaveRequest, Profile, CompanyHoliday } from '@/types'
 import { Download, Clock, Coffee, TrendingUp, Award, AlertTriangle, X, Palmtree, Home, MessageSquare } from 'lucide-react'
@@ -29,6 +29,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
   const [holidays, setHolidays] = useState<CompanyHoliday[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [firstEntryDate, setFirstEntryDate] = useState<Date | null>(null)
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -66,6 +67,18 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
       setSessions((sData as SessionWithBreaks[]) ?? [])
       setLeaves(lData ?? [])
       setHolidays(hData ?? [])
+
+      // Fetch absolute first session ever to determine when "No Data" ends
+      const { data: firstS } = await supabase
+        .from('work_sessions')
+        .select('check_in_time')
+        .eq('user_id', userId)
+        .order('check_in_time', { ascending: true })
+        .limit(1)
+      
+      if (firstS?.[0]) {
+        setFirstEntryDate(new Date(firstS[0].check_in_time))
+      }
     } catch (err: any) {
       console.error('Error loading reports:', err)
     } finally {
@@ -94,14 +107,28 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
     const isPast = isBefore(day, startOfToday)
     if (!isPast) return false
     
-    const isWeekend = isSaturday(day) || isSunday(day)
-    if (isWeekend) return false
-    
+    // Special Cases for April 2nd and 4th as requested
+    const dayDate = day.getDate()
+    const dayMonth = day.getMonth() // 0-indexed, so 3 is April
+    const isApril2Or4 = dayMonth === 3 && (dayDate === 2 || dayDate === 4)
+
+    // Check if it has an entry
     const hasSession = sessions.some(s => isSameDay(new Date(s.check_in_time), day))
+    if (hasSession) return false
+
+    // If it's April 2 or 4, it's always uninformed if missing
+    if (isApril2Or4) return true
+
+    // Only count as uninformed if it's AFTER the user started using the app (firstEntryDate)
+    if (!firstEntryDate || isBefore(day, startOfDay(firstEntryDate))) return false
+
+    // Use the custom isOffDay logic (includes 2nd/4th Saturday rule)
+    if (isOffDay(day)) return false
+    
     const hasLeave = leaves.some(l => isSameDay(new Date(l.leave_date), day))
     const hasHoliday = holidays.some(h => isSameDay(new Date(h.date), day))
     
-    return !hasSession && !hasLeave && !hasHoliday
+    return !hasLeave && !hasHoliday
   }).length
 
   // PDF Export
@@ -254,6 +281,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
               sessions={sessions} 
               leaves={leaves}
               holidays={holidays}
+              firstEntryDate={firstEntryDate}
               onMonthChange={handleMonthChange}
               onDateClick={(date) => setSelectedDate(date)}
             />
@@ -320,12 +348,21 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
             <div className="py-4 space-y-6 overflow-y-auto pr-1">
               {(() => {
                 const daySessions = sessions.filter(s => isSameDay(new Date(s.check_in_time), selectedDate))
+                const hasSession = daySessions.length > 0
+                
+                const isOffWork = isOffDay(selectedDate)
+                const isPast = isBefore(selectedDate, startOfDay(new Date()))
+
+                // Logic for "Uninformed" vs "No Data" matches uninformedLeaves calc
+                const dayDate = selectedDate.getDate()
+                const dayMonth = selectedDate.getMonth()
+                const isApril2Or4 = dayMonth === 3 && (dayDate === 2 || dayDate === 4)
+                
+                const isUninformed = !hasSession && (isApril2Or4 || (firstEntryDate && !isBefore(selectedDate, startOfToday) && !isOffWork))
+                
                 const dayLeave = leaves.find(l => isSameDay(new Date(l.leave_date), selectedDate))
                 const dayHoliday = holidays.find(h => isSameDay(new Date(h.date), selectedDate))
-
-                const isWeekend = isSaturday(selectedDate) || isSunday(selectedDate)
-                const isPast = isBefore(selectedDate, startOfDay(new Date()))
-                const isEmpty = daySessions.length === 0 && !dayLeave && !dayHoliday
+                const isEmpty = !hasSession && !dayLeave && !dayHoliday
 
                 return (
                   <>
@@ -396,7 +433,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
                             </div>
                           )}
                         </div>
-                      )
+                      );
                     })}
 
                     {dayLeave && (
@@ -422,12 +459,12 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
                     {isEmpty && (
                       <div className="text-center p-8 space-y-3">
                         <div className="inline-flex w-12 h-12 bg-bg-surface rounded-full items-center justify-center border border-border">
-                          {isWeekend ? <Home className="w-5 h-5 text-text-muted" /> : <AlertTriangle className="w-5 h-5 text-text-muted" />}
+                          {isUninformed ? <AlertTriangle className="w-5 h-5 text-accent-yellow" /> : isOffWork ? <Home className="w-5 h-5 text-text-muted" /> : <Clock className="w-5 h-5 text-text-muted" />}
                         </div>
                         <div>
-                          <p className="text-white font-semibold">{isWeekend ? 'Weekend' : 'No Records'}</p>
+                          <p className="text-white font-semibold">{isUninformed ? 'Uninformed' : isOffWork ? 'Off-Day' : 'No Data'}</p>
                           <p className="text-sm text-text-muted mt-1">
-                            {isWeekend ? 'Enjoy your weekend!' : isPast ? 'There are no attendance records or leaves filed for this date.' : 'This date is in the future.'}
+                            {isUninformed ? 'There are no attendance records for this work day.' : isOffWork ? 'Enjoy your day off!' : 'No session data is available for this date.'}
                           </p>
                         </div>
                       </div>
