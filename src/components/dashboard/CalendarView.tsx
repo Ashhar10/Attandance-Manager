@@ -159,9 +159,9 @@ export default function CalendarView({
                     </div>
                   )}
                   {dayHoliday && (
-                    <div className="flex items-center gap-1 text-[9px] text-accent-blue bg-accent-blue/10 px-1.5 py-0.5 rounded-full">
-                      <Home className="w-2.5 h-2.5" />
-                      <span>Holiday</span>
+                    <div className="flex items-center gap-1 text-[9px] text-accent-blue bg-accent-blue/10 px-1.5 py-0.5 rounded-full overflow-hidden">
+                      <Home className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">{dayHoliday.title}</span>
                     </div>
                   )}
                   {isUninformed && (

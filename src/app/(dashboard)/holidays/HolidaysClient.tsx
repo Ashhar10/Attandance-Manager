@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { format, isFuture, isToday, isPast, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 import Header from '@/components/ui/Header'
 import type { CompanyHoliday, Profile } from '@/types'
-import { Calendar, Plus, Trash2, AlertCircle, ChevronLeft, ChevronRight, Home } from 'lucide-react'
+import { Calendar, Plus, Trash2, AlertCircle, ChevronLeft, ChevronRight, Home, X } from 'lucide-react'
 
 interface HolidaysClientProps {
   profile: Profile
@@ -123,10 +123,18 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
           )}
         </div>
 
-        {/* Add form */}
+        {/* Add Holiday Modal */}
         {showForm && isAdmin && (
-          <div id="add-holiday-form" className="card p-6 animate-slide-up scroll-mt-24">
-            <h3 className="font-semibold mb-4">Add New Holiday</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in backdrop-blur-sm">
+            <div id="add-holiday-form" className="card w-full max-w-md p-6 flex flex-col animate-slide-up relative">
+              <button 
+                type="button"
+                onClick={() => setShowForm(false)} 
+                className="absolute top-4 right-4 p-2 text-text-muted hover:text-white transition-colors bg-bg-surface rounded-full"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <h3 className="font-semibold mb-4 text-lg">Add New Holiday</h3>
             {error && (
               <div className="card border-accent-red/30 bg-accent-red/5 p-3 flex items-center gap-2 mb-4">
                 <AlertCircle className="w-4 h-4 text-accent-red" />
@@ -156,6 +164,7 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
               </div>
             </form>
           </div>
+        </div>
         )}
 
         {/* Calendar View */}
@@ -193,7 +202,6 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
                       setDate(format(day, 'yyyy-MM-dd'))
                       setShowForm(true)
                       setTimeout(() => {
-                        document.getElementById('add-holiday-form')?.scrollIntoView({ behavior: 'smooth' })
                         document.getElementById('holiday-title')?.focus()
                       }, 100)
                     }}
