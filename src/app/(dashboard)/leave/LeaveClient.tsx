@@ -16,13 +16,19 @@ interface LeaveClientProps {
 
 export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClientProps) {
   const supabase = createClient()
-  const [leaveDate, setLeaveDate] = useState<string>(format(new Date(Date.now() + 86400000), 'yyyy-MM-dd'))
-  const [leaveDays, setLeaveDays] = useState<number>(1)
+  const tomorrow = format(new Date(Date.now() + 86400000), 'yyyy-MM-dd')
+  const [leaveType, setLeaveType] = useState<'single' | 'range'>('single')
+  const [leaveDate, setLeaveDate] = useState<string>(tomorrow)
+  const [leaveEndDate, setLeaveEndDate] = useState<string>(tomorrow)
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<LeaveRequest[]>(leaveHistory)
+
+  // Calculate leaveDays from date range
+  const leaveDays = leaveType === 'single' ? 1 : Math.max(1, Math.round((new Date(leaveEndDate).getTime() - new Date(leaveDate).getTime()) / 86400000) + 1)
+  const leaveDateDisplay = leaveType === 'single' ? format(new Date(leaveDate), 'PPP') : `${format(new Date(leaveDate), 'PPP')} to ${format(new Date(leaveEndDate), 'PPP')}`
 
   // Get HR WhatsApp from profile or localStorage
   const hrNumber = profile.hr_whatsapp || (typeof window !== 'undefined' ? localStorage.getItem('hr_whatsapp') ?? '' : '')
@@ -30,7 +36,7 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
   const preview = buildLeaveMessage({
     employeeName: profile.name,
     employeeId: profile.employee_id ?? undefined,
-    leaveDate: format(new Date(leaveDate), 'PPP'),
+    leaveDate: leaveDateDisplay,
     leaveDays,
     reason: reason || '[Reason]',
   })
@@ -39,8 +45,10 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
     e.preventDefault()
     setError(null)
     if (!reason.trim()) { setError('Please provide a reason for leave.'); return }
-    if (leaveDays < 1) { setError('Leave days must be at least 1.'); return }
     if (!leaveDate) { setError('Please select a date.'); return }
+    if (leaveType === 'range' && new Date(leaveEndDate) < new Date(leaveDate)) {
+      setError('End date cannot be before start date.'); return
+    }
 
     setSubmitting(true)
 
@@ -53,7 +61,7 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
       .maybeSingle()
 
     if (checkErr) { setError(checkErr.message); setSubmitting(false); return }
-    if (existing) { setError('You have already applied for leave on this date.'); setSubmitting(false); return }
+    if (existing) { setError('You have already applied for leave starting on this date.'); setSubmitting(false); return }
 
     const { data, error: err } = await supabase
       .from('leave_requests')
@@ -68,7 +76,7 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
 
     if (err) {
       if (err.code === '42703') {
-        setError('Database error: The "leave_date" column is missing. Please run the SQL migration I provided in your Supabase SQL Editor.')
+        setError('Database error: The "leave_date" column is missing. Please run the SQL migration in your Supabase SQL Editor.')
       } else if (err.code === '23505') {
         setError('You have already applied for leave on this date.')
       } else {
@@ -84,7 +92,7 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
     const finalMsg = buildLeaveMessage({
       employeeName: profile.name,
       employeeId: profile.employee_id ?? undefined,
-      leaveDate: format(new Date(leaveDate), 'PPP'),
+      leaveDate: leaveDateDisplay,
       leaveDays,
       reason: reason.trim(),
     })
@@ -134,31 +142,83 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
             )}
 
             <form onSubmit={handleSubmit} id="leave-form" className="space-y-4">
+
+              {/* Leave Type Toggle */}
               <div>
-                <label className="label" htmlFor="leave-date">Date for Leave</label>
-                <input
-                  id="leave-date"
-                  type="date"
-                  value={leaveDate}
-                  min={format(new Date(), 'yyyy-MM-dd')}
-                  onChange={e => setLeaveDate(e.target.value)}
-                  className="input"
-                  required
-                />
+                <label className="label">Leave Duration</label>
+                <div className="flex bg-bg-surface p-1 rounded-xl border border-border">
+                  <button
+                    type="button"
+                    onClick={() => { setLeaveType('single'); setLeaveEndDate(leaveDate) }}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                      leaveType === 'single' ? 'bg-bg-elevated text-white shadow-sm' : 'text-text-muted hover:text-white'
+                    }`}
+                  >
+                    Single Day
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaveType('range')}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                      leaveType === 'range' ? 'bg-bg-elevated text-white shadow-sm' : 'text-text-muted hover:text-white'
+                    }`}
+                  >
+                    Multiple Days
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="label" htmlFor="leave-days">Number of Leave Days</label>
-                <input
-                  id="leave-days"
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={leaveDays}
-                  onChange={e => setLeaveDays(parseInt(e.target.value) || 1)}
-                  className="input"
-                  required
-                />
-              </div>
+
+              {/* Date Fields */}
+              {leaveType === 'single' ? (
+                <div>
+                  <label className="label" htmlFor="leave-date">Date</label>
+                  <input
+                    id="leave-date"
+                    type="date"
+                    value={leaveDate}
+                    min={format(new Date(), 'yyyy-MM-dd')}
+                    onChange={e => setLeaveDate(e.target.value)}
+                    className="input"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label" htmlFor="leave-date-from">From</label>
+                    <input
+                      id="leave-date-from"
+                      type="date"
+                      value={leaveDate}
+                      min={format(new Date(), 'yyyy-MM-dd')}
+                      onChange={e => {
+                        setLeaveDate(e.target.value)
+                        if (e.target.value > leaveEndDate) setLeaveEndDate(e.target.value)
+                      }}
+                      className="input"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="leave-date-to">To</label>
+                    <input
+                      id="leave-date-to"
+                      type="date"
+                      value={leaveEndDate}
+                      min={leaveDate}
+                      onChange={e => setLeaveEndDate(e.target.value)}
+                      className="input"
+                      required
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-text-muted bg-bg-surface border border-border rounded-xl px-3 py-2">
+                      📅 <span className="font-semibold text-white">{leaveDays} day{leaveDays !== 1 ? 's' : ''}</span> of leave selected
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="label" htmlFor="leave-reason">Reason for Leave</label>
                 <textarea
