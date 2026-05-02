@@ -276,37 +276,37 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
           </div>
           <div className="grid grid-cols-3 divide-x divide-border">
             {/* Uninformed */}
-            <div className="flex flex-col items-center gap-1 px-2 sm:px-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-accent-yellow" />
-                <span className="text-[10px] text-text-muted uppercase tracking-widest">Uninformed</span>
+            <div className="flex flex-col items-center gap-1 px-1 sm:px-4">
+              <div className="flex items-center gap-1 mb-1">
+                <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent-yellow shrink-0" />
+                <span className="text-[8px] sm:text-[10px] text-text-muted uppercase tracking-tight sm:tracking-widest truncate">Uninformed</span>
               </div>
-              <span className={`text-2xl sm:text-3xl font-bold font-mono ${uninformedLeaves > 0 ? 'text-accent-yellow' : 'text-text-muted'}`}>
+              <span className={`text-xl sm:text-3xl font-bold font-mono ${uninformedLeaves > 0 ? 'text-accent-yellow' : 'text-text-muted'}`}>
                 {uninformedLeaves}
               </span>
-              <span className="text-[10px] text-text-muted">day{uninformedLeaves !== 1 ? 's' : ''}</span>
+              <span className="text-[9px] sm:text-[10px] text-text-muted">day{uninformedLeaves !== 1 ? 's' : ''}</span>
             </div>
             {/* Applied */}
-            <div className="flex flex-col items-center gap-1 px-2 sm:px-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Palmtree className="w-3.5 h-3.5 text-accent-red" />
-                <span className="text-[10px] text-text-muted uppercase tracking-widest">Applied</span>
+            <div className="flex flex-col items-center gap-1 px-1 sm:px-4">
+              <div className="flex items-center gap-1 mb-1">
+                <Palmtree className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent-red shrink-0" />
+                <span className="text-[8px] sm:text-[10px] text-text-muted uppercase tracking-tight sm:tracking-widest truncate">Applied</span>
               </div>
-              <span className={`text-2xl sm:text-3xl font-bold font-mono ${leaves.length > 0 ? 'text-accent-red' : 'text-text-muted'}`}>
+              <span className={`text-xl sm:text-3xl font-bold font-mono ${leaves.length > 0 ? 'text-accent-red' : 'text-text-muted'}`}>
                 {totalLeaveDays}
               </span>
-              <span className="text-[10px] text-text-muted">{leaves.length} request{leaves.length !== 1 ? 's' : ''}</span>
+              <span className="text-[9px] sm:text-[10px] text-text-muted">{leaves.length} req{leaves.length !== 1 ? 's' : ''}</span>
             </div>
             {/* Total */}
-            <div className="flex flex-col items-center gap-1 px-2 sm:px-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-white/50" />
-                <span className="text-[10px] text-text-muted uppercase tracking-widest">Total</span>
+            <div className="flex flex-col items-center gap-1 px-1 sm:px-4">
+              <div className="flex items-center gap-1 mb-1">
+                <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white/50 shrink-0" />
+                <span className="text-[8px] sm:text-[10px] text-text-muted uppercase tracking-tight sm:tracking-widest truncate">Total</span>
               </div>
-              <span className={`text-2xl sm:text-3xl font-bold font-mono ${(uninformedLeaves + totalLeaveDays) > 0 ? 'text-white' : 'text-text-muted'}`}>
+              <span className={`text-xl sm:text-3xl font-bold font-mono ${(uninformedLeaves + totalLeaveDays) > 0 ? 'text-white' : 'text-text-muted'}`}>
                 {uninformedLeaves + totalLeaveDays}
               </span>
-              <span className="text-[10px] text-text-muted">days this month</span>
+              <span className="text-[9px] sm:text-[10px] text-text-muted">days total</span>
             </div>
           </div>
         </div>
@@ -337,35 +337,76 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
             {sessions.length === 0 ? (
               <div className="p-12 text-center text-text-muted text-sm">No sessions found for {monthLabel}.</div>
             ) : (
-              <div className="overflow-x-auto overflow-y-auto max-h-[480px]">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-bg-surface">
-                    <tr className="border-b border-border">
-                      {['Date', 'Check In', 'Check Out', 'Net Work', 'Break', 'Overtime'].map(h => (
-                        <th key={h} className="text-left px-5 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sessions.map((s, i) => {
-                      const breakSec = calcTotalBreakSeconds(s.break_sessions)
-                      const otSec = intervalToSeconds(s.overtime)
-                      return (
-                        <tr key={s.id} className={`border-b border-border/50 transition-colors hover:bg-bg-elevated ${i % 2 === 0 ? '' : 'bg-bg-surface/30'}`}>
-                          <td className="px-5 py-4 font-medium whitespace-nowrap">{format(new Date(s.check_in_time), 'EEE, MMM d')}</td>
-                          <td className="px-5 py-4 font-mono text-accent-green">{format(new Date(s.check_in_time), 'hh:mm a')}</td>
-                          <td className="px-5 py-4 font-mono text-accent-red">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : <span className="text-text-muted">—</span>}</td>
-                          <td className="px-5 py-4 font-mono">{formatDuration(intervalToSeconds(s.net_time))}</td>
-                          <td className="px-5 py-4 font-mono text-accent-yellow">{formatDuration(breakSec)}</td>
-                          <td className={`px-5 py-4 font-mono ${otSec > 0 ? 'text-accent-green' : 'text-text-muted'}`}>
-                            {otSec > 0 ? formatDuration(otSec) : '—'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                {/* Mobile: card per row */}
+                <div className="sm:hidden divide-y divide-border/50">
+                  {sessions.map((s, i) => {
+                    const breakSec = calcTotalBreakSeconds(s.break_sessions)
+                    const otSec = intervalToSeconds(s.overtime)
+                    return (
+                      <div key={s.id} className={`px-4 py-3 space-y-2 ${i % 2 === 0 ? '' : 'bg-bg-surface/30'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">{format(new Date(s.check_in_time), 'EEE, MMM d')}</span>
+                          {otSec > 0 && (
+                            <span className="text-[10px] text-accent-green bg-accent-green/10 px-2 py-0.5 rounded-full font-mono">
+                              OT: {formatDuration(otSec)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          <div>
+                            <p className="text-[9px] text-text-muted uppercase tracking-widest">Check In</p>
+                            <p className="font-mono text-xs text-accent-green">{format(new Date(s.check_in_time), 'hh:mm a')}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-text-muted uppercase tracking-widest">Check Out</p>
+                            <p className="font-mono text-xs text-accent-red">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-text-muted uppercase tracking-widest">Net Work</p>
+                            <p className="font-mono text-xs">{formatDuration(intervalToSeconds(s.net_time))}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-text-muted uppercase tracking-widest">Break</p>
+                            <p className="font-mono text-xs text-accent-yellow">{formatDuration(breakSec)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Desktop: scrollable table */}
+                <div className="hidden sm:block overflow-x-auto overflow-y-auto max-h-[480px]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 bg-bg-surface">
+                      <tr className="border-b border-border">
+                        {['Date', 'Check In', 'Check Out', 'Net Work', 'Break', 'Overtime'].map(h => (
+                          <th key={h} className="text-left px-5 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessions.map((s, i) => {
+                        const breakSec = calcTotalBreakSeconds(s.break_sessions)
+                        const otSec = intervalToSeconds(s.overtime)
+                        return (
+                          <tr key={s.id} className={`border-b border-border/50 transition-colors hover:bg-bg-elevated ${i % 2 === 0 ? '' : 'bg-bg-surface/30'}`}>
+                            <td className="px-5 py-4 font-medium whitespace-nowrap">{format(new Date(s.check_in_time), 'EEE, MMM d')}</td>
+                            <td className="px-5 py-4 font-mono text-accent-green">{format(new Date(s.check_in_time), 'hh:mm a')}</td>
+                            <td className="px-5 py-4 font-mono text-accent-red">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : <span className="text-text-muted">—</span>}</td>
+                            <td className="px-5 py-4 font-mono">{formatDuration(intervalToSeconds(s.net_time))}</td>
+                            <td className="px-5 py-4 font-mono text-accent-yellow">{formatDuration(breakSec)}</td>
+                            <td className={`px-5 py-4 font-mono ${otSec > 0 ? 'text-accent-green' : 'text-text-muted'}`}>
+                              {otSec > 0 ? formatDuration(otSec) : '—'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}
