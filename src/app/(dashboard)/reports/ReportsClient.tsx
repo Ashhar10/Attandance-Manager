@@ -96,6 +96,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
   const totalBreakSec = sessions.reduce((acc, s) => acc + calcTotalBreakSeconds(s.break_sessions), 0)
   const totalOTSec = sessions.reduce((acc, s) => acc + intervalToSeconds(s.overtime), 0)
   const workDays = sessions.filter(s => s.check_out_time).length
+  const totalLeaveDays = leaves.reduce((acc, l) => acc + (l.leave_days || 1), 0)
 
   // Calculate Uninformed Leaves
   const startOfToday = startOfDay(new Date())
@@ -257,14 +258,15 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
             { id: 'rpt-break', icon: Coffee, label: 'Total Break', value: formatDuration(totalBreakSec), color: 'text-accent-yellow' },
             { id: 'rpt-ot', icon: Award, label: 'Overtime', value: formatDuration(totalOTSec), color: totalOTSec > 0 ? 'text-accent-green' : 'text-text-muted' },
             { id: 'rpt-uninformed', icon: AlertTriangle, label: 'Uninformed', value: String(uninformedLeaves), color: uninformedLeaves > 0 ? 'text-accent-yellow' : 'text-text-muted' },
-            { id: 'rpt-leaves', icon: Palmtree, label: 'Leaves Applied', value: String(leaves.length), color: leaves.length > 0 ? 'text-accent-red' : 'text-text-muted' },
-          ].map(({ id, icon: Icon, label, value, color }) => (
+            { id: 'rpt-leaves', icon: Palmtree, label: 'Leaves Applied', value: String(totalLeaveDays), sub: `${leaves.length} request${leaves.length !== 1 ? 's' : ''}`, color: leaves.length > 0 ? 'text-accent-red' : 'text-text-muted' },
+          ].map(({ id, icon: Icon, label, value, sub, color }) => (
             <div key={id} id={id} className="stat-card">
               <div className="flex items-center gap-2 mb-2">
                 <Icon className={`w-4 h-4 ${color}`} />
                 <span className="stat-label text-[10px] sm:text-xs">{label}</span>
               </div>
               <span className={`stat-value text-lg sm:text-2xl ${color}`}>{value}</span>
+              {sub && <p className="text-[10px] text-text-muted mt-1">{sub}</p>}
             </div>
           ))}
         </div>
