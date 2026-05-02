@@ -5,8 +5,20 @@ import { createClient } from '@/lib/supabase/client'
 import { buildWhatsAppUrl, buildLeaveMessage } from '@/lib/whatsapp'
 import Header from '@/components/ui/Header'
 import type { LeaveRequest, Profile } from '@/types'
-import { format } from 'date-fns'
+import { format, isValid, parseISO } from 'date-fns'
 import { Send, ExternalLink, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+
+// Helper: safely parse a yyyy-MM-dd string — returns null if invalid
+function parseDate(str: string): Date | null {
+  if (!str || str.length < 10) return null
+  const d = parseISO(str)
+  return isValid(d) ? d : null
+}
+
+function safeFormat(str: string, fmt: string, fallback = '—'): string {
+  const d = parseDate(str)
+  return d ? format(d, fmt) : fallback
+}
 
 interface LeaveClientProps {
   userId: string
@@ -16,6 +28,7 @@ interface LeaveClientProps {
 
 export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClientProps) {
   const supabase = createClient()
+  // Compute tomorrow once at render-time on the client (no hydration issue since this is 'use client')
   const tomorrow = format(new Date(Date.now() + 86400000), 'yyyy-MM-dd')
   const [leaveType, setLeaveType] = useState<'single' | 'range'>('single')
   const [leaveDate, setLeaveDate] = useState<string>(tomorrow)
@@ -26,9 +39,16 @@ export default function LeaveClient({ userId, profile, leaveHistory }: LeaveClie
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<LeaveRequest[]>(leaveHistory)
 
-  // Calculate leaveDays from date range
-  const leaveDays = leaveType === 'single' ? 1 : Math.max(1, Math.round((new Date(leaveEndDate).getTime() - new Date(leaveDate).getTime()) / 86400000) + 1)
-  const leaveDateDisplay = leaveType === 'single' ? format(new Date(leaveDate), 'PPP') : `${format(new Date(leaveDate), 'PPP')} to ${format(new Date(leaveEndDate), 'PPP')}`
+  // Calculate leaveDays — guard against partial/invalid date strings while typing
+  const startDate = parseDate(leaveDate)
+  const endDate = parseDate(leaveEndDate)
+  const leaveDays = leaveType === 'single' || !startDate || !endDate
+    ? 1
+    : Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1)
+
+  const leaveDateDisplay = leaveType === 'single'
+    ? safeFormat(leaveDate, 'PPP', leaveDate)
+    : `${safeFormat(leaveDate, 'PPP', leaveDate)} to ${safeFormat(leaveEndDate, 'PPP', leaveEndDate)}`
 
   // Get HR WhatsApp from profile or localStorage
   const hrNumber = profile.hr_whatsapp || (typeof window !== 'undefined' ? localStorage.getItem('hr_whatsapp') ?? '' : '')
