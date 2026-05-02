@@ -337,12 +337,12 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
             {sessions.length === 0 ? (
               <div className="p-12 text-center text-text-muted text-sm">No sessions found for {monthLabel}.</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-auto max-h-[480px]">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-bg-surface/50">
-                      {['Date', 'Check In', 'Check Out', 'Net Work', 'Break', 'Overtime'].map((h, i, arr) => (
-                        <th key={h} className={`text-left px-5 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap ${i < arr.length - 1 ? 'border-r border-border/40' : ''}`}>{h}</th>
+                  <thead className="sticky top-0 z-10 bg-bg-surface">
+                    <tr className="border-b border-border">
+                      {['Date', 'Check In', 'Check Out', 'Net Work', 'Break', 'Overtime'].map(h => (
+                        <th key={h} className="text-left px-5 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -352,11 +352,11 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
                       const otSec = intervalToSeconds(s.overtime)
                       return (
                         <tr key={s.id} className={`border-b border-border/50 transition-colors hover:bg-bg-elevated ${i % 2 === 0 ? '' : 'bg-bg-surface/30'}`}>
-                          <td className="px-5 py-4 font-medium whitespace-nowrap border-r border-border/40">{format(new Date(s.check_in_time), 'EEE, MMM d')}</td>
-                          <td className="px-5 py-4 font-mono text-accent-green border-r border-border/40">{format(new Date(s.check_in_time), 'hh:mm a')}</td>
-                          <td className="px-5 py-4 font-mono text-accent-red border-r border-border/40">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : <span className="text-text-muted">—</span>}</td>
-                          <td className="px-5 py-4 font-mono border-r border-border/40">{formatDuration(intervalToSeconds(s.net_time))}</td>
-                          <td className="px-5 py-4 font-mono text-accent-yellow border-r border-border/40">{formatDuration(breakSec)}</td>
+                          <td className="px-5 py-4 font-medium whitespace-nowrap">{format(new Date(s.check_in_time), 'EEE, MMM d')}</td>
+                          <td className="px-5 py-4 font-mono text-accent-green">{format(new Date(s.check_in_time), 'hh:mm a')}</td>
+                          <td className="px-5 py-4 font-mono text-accent-red">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : <span className="text-text-muted">—</span>}</td>
+                          <td className="px-5 py-4 font-mono">{formatDuration(intervalToSeconds(s.net_time))}</td>
+                          <td className="px-5 py-4 font-mono text-accent-yellow">{formatDuration(breakSec)}</td>
                           <td className={`px-5 py-4 font-mono ${otSec > 0 ? 'text-accent-green' : 'text-text-muted'}`}>
                             {otSec > 0 ? formatDuration(otSec) : '—'}
                           </td>
