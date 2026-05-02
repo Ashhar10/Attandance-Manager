@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { format, isFuture, isToday, isPast } from 'date-fns'
+import { format, isFuture, isToday, isPast, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 import Header from '@/components/ui/Header'
 import type { CompanyHoliday, Profile } from '@/types'
-import { Calendar, Plus, Trash2, AlertCircle } from 'lucide-react'
+import { Calendar, Plus, Trash2, AlertCircle, ChevronLeft, ChevronRight, Home } from 'lucide-react'
 
 interface HolidaysClientProps {
   profile: Profile
@@ -21,11 +21,25 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentDate, setCurrentDate] = useState(new Date())
 
   const isAdmin = profile?.is_admin ?? false
 
   const upcoming = holidays.filter(h => isFuture(new Date(h.date)) || isToday(new Date(h.date)))
   const past = holidays.filter(h => isPast(new Date(h.date)) && !isToday(new Date(h.date)))
+
+  const monthStart = startOfMonth(currentDate)
+  const monthEnd = endOfMonth(currentDate)
+  const startDate = startOfWeek(monthStart)
+  const endDate = endOfWeek(monthEnd)
+
+  const calendarDays = eachDayOfInterval({
+    start: startDate,
+    end: endDate,
+  })
+
+  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1))
+  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1))
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,7 +125,7 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
 
         {/* Add form */}
         {showForm && isAdmin && (
-          <div className="card p-6 animate-slide-up">
+          <div id="add-holiday-form" className="card p-6 animate-slide-up scroll-mt-24">
             <h3 className="font-semibold mb-4">Add New Holiday</h3>
             {error && (
               <div className="card border-accent-red/30 bg-accent-red/5 p-3 flex items-center gap-2 mb-4">
@@ -144,8 +158,72 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
           </div>
         )}
 
-        {/* Upcoming */}
-        <div>
+        {/* Calendar View */}
+        <div className="card overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h3 className="font-semibold">{format(currentDate, 'MMMM yyyy')}</h3>
+            <div className="flex gap-1">
+              <button onClick={prevMonth} className="btn-ghost btn-sm p-1.5 rounded-lg">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={nextMonth} className="btn-ghost btn-sm p-1.5 rounded-lg">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="p-2 sm:p-4">
+            <div className="grid grid-cols-7 mb-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="text-center text-[10px] uppercase tracking-tighter text-text-muted font-bold py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {calendarDays.map((day) => {
+                const isSelectedMonth = isSameMonth(day, monthStart)
+                const isDayToday = isToday(day)
+                const dayHoliday = holidays.find(h => isSameDay(new Date(h.date), day))
+                
+                return (
+                  <div 
+                    key={day.toString()}
+                    onClick={() => {
+                      if (!isAdmin) return;
+                      setDate(format(day, 'yyyy-MM-dd'))
+                      setShowForm(true)
+                      setTimeout(() => {
+                        document.getElementById('add-holiday-form')?.scrollIntoView({ behavior: 'smooth' })
+                        document.getElementById('holiday-title')?.focus()
+                      }, 100)
+                    }}
+                    className={`
+                      relative min-h-[60px] sm:min-h-[80px] p-1 sm:p-2 rounded-xl border transition-all duration-300
+                      ${isSelectedMonth ? 'bg-bg-surface/50 hover:bg-bg-elevated cursor-pointer text-text-primary' : 'bg-transparent text-text-muted/40 border-transparent opacity-50'}
+                      ${dayHoliday ? 'border-accent-blue/30 bg-accent-blue/10' : 'border-border/50'}
+                      ${isDayToday ? 'border-white/40' : ''}
+                      ${!isAdmin ? 'cursor-default' : ''}
+                    `}
+                  >
+                    <span className={`text-xs sm:text-sm font-semibold ${isDayToday ? 'text-accent-blue' : ''}`}>
+                      {format(day, 'd')}
+                    </span>
+                    {dayHoliday && (
+                      <div className="mt-1 flex items-center gap-1 text-[9px] sm:text-[10px] text-accent-blue bg-accent-blue/10 px-1 sm:px-1.5 py-0.5 rounded-full overflow-hidden">
+                        <Home className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate hidden sm:inline">{dayHoliday.title}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Upcoming */}
+          <div>
           <h3 className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5" /> Upcoming
           </h3>
@@ -161,12 +239,15 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
         {/* Past */}
         {past.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Past Holidays</h3>
+            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5" /> Past Holidays
+            </h3>
             <div className="space-y-3">
               {past.map(h => <HolidayCard key={h.id} h={h} />)}
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )
