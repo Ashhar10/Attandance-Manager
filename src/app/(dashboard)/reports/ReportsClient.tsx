@@ -337,9 +337,9 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
             {sessions.length === 0 ? (
               <div className="p-12 text-center text-text-muted text-sm">No sessions found for {monthLabel}.</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-bg-surface">
                     <tr className="border-b border-border">
                       {['Date', 'Check In', 'Check Out', 'Net Work', 'Break', 'Overtime'].map(h => (
                         <th key={h} className="text-left px-5 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
