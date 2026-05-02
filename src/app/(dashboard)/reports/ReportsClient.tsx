@@ -248,27 +248,66 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
               <span>Export PDF</span>
             </button>
           </div>
-        </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        {/* Summary Stats — Top row: 4 cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { id: 'rpt-days', icon: Clock, label: 'Work Days', value: String(workDays), color: 'text-white' },
             { id: 'rpt-net', icon: TrendingUp, label: 'Net Work', value: formatDuration(totalNetSec), color: 'text-accent-blue' },
             { id: 'rpt-break', icon: Coffee, label: 'Total Break', value: formatDuration(totalBreakSec), color: 'text-accent-yellow' },
             { id: 'rpt-ot', icon: Award, label: 'Overtime', value: formatDuration(totalOTSec), color: totalOTSec > 0 ? 'text-accent-green' : 'text-text-muted' },
-            { id: 'rpt-uninformed', icon: AlertTriangle, label: 'Uninformed', value: String(uninformedLeaves), color: uninformedLeaves > 0 ? 'text-accent-yellow' : 'text-text-muted' },
-            { id: 'rpt-leaves', icon: Palmtree, label: 'Leaves Applied', value: String(totalLeaveDays), sub: `${leaves.length} request${leaves.length !== 1 ? 's' : ''}`, color: leaves.length > 0 ? 'text-accent-red' : 'text-text-muted' },
-          ].map(({ id, icon: Icon, label, value, sub, color }) => (
+          ].map(({ id, icon: Icon, label, value, color }) => (
             <div key={id} id={id} className="stat-card">
               <div className="flex items-center gap-2 mb-2">
                 <Icon className={`w-4 h-4 ${color}`} />
                 <span className="stat-label text-[10px] sm:text-xs">{label}</span>
               </div>
               <span className={`stat-value text-lg sm:text-2xl ${color}`}>{value}</span>
-              {sub && <p className="text-[10px] text-text-muted mt-1">{sub}</p>}
             </div>
           ))}
+        </div>
+
+        {/* Combined Leave Card: Uninformed | Applied | Total */}
+        <div id="rpt-leave-summary" className="stat-card col-span-full">
+          <div className="flex items-center gap-2 mb-4">
+            <Palmtree className="w-4 h-4 text-accent-red" />
+            <span className="stat-label text-[10px] sm:text-xs uppercase tracking-widest">Leave Summary</span>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border">
+            {/* Uninformed */}
+            <div className="flex flex-col items-center gap-1 px-2 sm:px-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-accent-yellow" />
+                <span className="text-[10px] text-text-muted uppercase tracking-widest">Uninformed</span>
+              </div>
+              <span className={`text-2xl sm:text-3xl font-bold font-mono ${uninformedLeaves > 0 ? 'text-accent-yellow' : 'text-text-muted'}`}>
+                {uninformedLeaves}
+              </span>
+              <span className="text-[10px] text-text-muted">day{uninformedLeaves !== 1 ? 's' : ''}</span>
+            </div>
+            {/* Applied */}
+            <div className="flex flex-col items-center gap-1 px-2 sm:px-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Palmtree className="w-3.5 h-3.5 text-accent-red" />
+                <span className="text-[10px] text-text-muted uppercase tracking-widest">Applied</span>
+              </div>
+              <span className={`text-2xl sm:text-3xl font-bold font-mono ${leaves.length > 0 ? 'text-accent-red' : 'text-text-muted'}`}>
+                {totalLeaveDays}
+              </span>
+              <span className="text-[10px] text-text-muted">{leaves.length} request{leaves.length !== 1 ? 's' : ''}</span>
+            </div>
+            {/* Total */}
+            <div className="flex flex-col items-center gap-1 px-2 sm:px-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-white/50" />
+                <span className="text-[10px] text-text-muted uppercase tracking-widest">Total</span>
+              </div>
+              <span className={`text-2xl sm:text-3xl font-bold font-mono ${(uninformedLeaves + totalLeaveDays) > 0 ? 'text-white' : 'text-text-muted'}`}>
+                {uninformedLeaves + totalLeaveDays}
+              </span>
+              <span className="text-[10px] text-text-muted">days this month</span>
+            </div>
+          </div>
         </div>
 
         {/* Main Content: Calendar or List */}
