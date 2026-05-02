@@ -22,6 +22,7 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
   const isAdmin = profile?.is_admin ?? false
 
@@ -124,48 +125,78 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
         </div>
 
         {/* Add Holiday Modal */}
-        {showForm && isAdmin && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in backdrop-blur-sm">
-            <div id="add-holiday-form" className="card w-full max-w-md p-6 flex flex-col animate-slide-up relative">
-              <button 
-                type="button"
-                onClick={() => setShowForm(false)} 
-                className="absolute top-4 right-4 p-2 text-text-muted hover:text-white transition-colors bg-bg-surface rounded-full"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <h3 className="font-semibold mb-4 text-lg">Add New Holiday</h3>
-            {error && (
-              <div className="card border-accent-red/30 bg-accent-red/5 p-3 flex items-center gap-2 mb-4">
-                <AlertCircle className="w-4 h-4 text-accent-red" />
-                <p className="text-sm text-accent-red">{error}</p>
-              </div>
-            )}
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label" htmlFor="holiday-title">Holiday Name</label>
-                  <input id="holiday-title" type="text" value={title} onChange={e => setTitle(e.target.value)} className="input" placeholder="e.g. National Day" required />
-                </div>
-                <div>
-                  <label className="label" htmlFor="holiday-date">Date</label>
-                  <input id="holiday-date" type="date" value={date} onChange={e => setDate(e.target.value)} className="input" required />
-                </div>
-              </div>
-              <div>
-                <label className="label" htmlFor="holiday-desc">Description (optional)</label>
-                <input id="holiday-desc" type="text" value={description} onChange={e => setDescription(e.target.value)} className="input" placeholder="Brief description..." />
-              </div>
-              <div className="flex gap-3">
-                <button type="submit" id="btn-save-holiday" disabled={saving} className="btn-md btn-primary">
-                  {saving ? 'Saving...' : 'Save Holiday'}
+        {showForm && selectedDay && (() => {
+          const existingHoliday = holidays.find(h => isSameDay(new Date(h.date), selectedDay))
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in backdrop-blur-sm">
+              <div id="add-holiday-form" className="card w-full max-w-md p-6 flex flex-col animate-slide-up relative">
+                <button
+                  type="button"
+                  onClick={() => { setShowForm(false); setTitle(''); setDescription(''); setError(null) }}
+                  className="absolute top-4 right-4 p-2 text-text-muted hover:text-white transition-colors bg-bg-surface rounded-full"
+                >
+                  <X className="w-4 h-4" />
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="btn-md btn-ghost">Cancel</button>
+
+                <div className="mb-5">
+                  <p className="text-xs text-text-muted uppercase tracking-widest mb-1">Selected Date</p>
+                  <h3 className="font-bold text-xl text-white">{format(selectedDay, 'EEEE, MMMM d, yyyy')}</h3>
+                </div>
+
+                {existingHoliday ? (
+                  <div className="space-y-4">
+                    <div className="bg-accent-blue/5 border border-accent-blue/20 p-4 rounded-xl space-y-2">
+                      <div className="flex items-center gap-2 text-accent-blue font-semibold">
+                        <Home className="w-5 h-5" /> Company Holiday
+                      </div>
+                      <p className="text-white font-medium">{existingHoliday.title}</p>
+                      {existingHoliday.description && <p className="text-sm text-text-muted">{existingHoliday.description}</p>}
+                    </div>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDelete(existingHoliday.id)}
+                        className="btn-md w-full flex items-center justify-center gap-2 text-accent-red border border-accent-red/30 hover:bg-accent-red/10 transition-all rounded-xl py-2"
+                      >
+                        <Trash2 className="w-4 h-4" /> Remove Holiday
+                      </button>
+                    )}
+                  </div>
+                ) : isAdmin ? (
+                  <div>
+                    <h4 className="font-semibold mb-4">Declare as Holiday</h4>
+                    {error && (
+                      <div className="card border-accent-red/30 bg-accent-red/5 p-3 flex items-center gap-2 mb-4">
+                        <AlertCircle className="w-4 h-4 text-accent-red" />
+                        <p className="text-sm text-accent-red">{error}</p>
+                      </div>
+                    )}
+                    <form onSubmit={handleAdd} className="space-y-4">
+                      <div>
+                        <label className="label" htmlFor="holiday-title">Holiday Name</label>
+                        <input id="holiday-title" type="text" value={title} onChange={e => setTitle(e.target.value)} className="input" placeholder="e.g. National Day" required />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor="holiday-desc">Description (optional)</label>
+                        <input id="holiday-desc" type="text" value={description} onChange={e => setDescription(e.target.value)} className="input" placeholder="Brief description..." />
+                      </div>
+                      <div className="flex gap-3">
+                        <button type="submit" id="btn-save-holiday" disabled={saving} className="btn-md btn-primary flex-1">
+                          {saving ? 'Saving...' : 'Declare Holiday'}
+                        </button>
+                        <button type="button" onClick={() => { setShowForm(false); setTitle(''); setDescription(''); setError(null) }} className="btn-md btn-ghost">Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-text-muted text-sm">
+                    <p>No holiday declared for this date.</p>
+                    <p className="mt-1 text-xs">Only admins can add holidays.</p>
+                  </div>
+                )}
               </div>
-            </form>
-          </div>
-        </div>
-        )}
+            </div>
+          )
+        })()}
 
         {/* Calendar View */}
         <div className="card overflow-hidden">
@@ -198,8 +229,12 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
                   <div 
                     key={day.toString()}
                     onClick={() => {
-                      if (!isAdmin) return;
+                      if (!isSelectedMonth) return;
+                      setSelectedDay(day)
                       setDate(format(day, 'yyyy-MM-dd'))
+                      setTitle('')
+                      setDescription('')
+                      setError(null)
                       setShowForm(true)
                       setTimeout(() => {
                         document.getElementById('holiday-title')?.focus()
@@ -210,7 +245,6 @@ export default function HolidaysClient({ profile, initialHolidays }: HolidaysCli
                       ${isSelectedMonth ? 'bg-bg-surface/50 hover:bg-bg-elevated cursor-pointer text-text-primary' : 'bg-transparent text-text-muted/40 border-transparent opacity-50'}
                       ${dayHoliday ? 'border-accent-blue/30 bg-accent-blue/10' : 'border-border/50'}
                       ${isDayToday ? 'border-white/40' : ''}
-                      ${!isAdmin ? 'cursor-default' : ''}
                     `}
                   >
                     <span className={`text-xs sm:text-sm font-semibold ${isDayToday ? 'text-accent-blue' : ''}`}>
