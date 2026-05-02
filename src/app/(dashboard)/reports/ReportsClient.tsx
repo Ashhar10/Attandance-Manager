@@ -250,13 +250,14 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {[
             { id: 'rpt-days', icon: Clock, label: 'Work Days', value: String(workDays), color: 'text-white' },
             { id: 'rpt-net', icon: TrendingUp, label: 'Net Work', value: formatDuration(totalNetSec), color: 'text-accent-blue' },
             { id: 'rpt-break', icon: Coffee, label: 'Total Break', value: formatDuration(totalBreakSec), color: 'text-accent-yellow' },
             { id: 'rpt-ot', icon: Award, label: 'Overtime', value: formatDuration(totalOTSec), color: totalOTSec > 0 ? 'text-accent-green' : 'text-text-muted' },
             { id: 'rpt-uninformed', icon: AlertTriangle, label: 'Uninformed', value: String(uninformedLeaves), color: uninformedLeaves > 0 ? 'text-accent-yellow' : 'text-text-muted' },
+            { id: 'rpt-leaves', icon: Palmtree, label: 'Leaves Applied', value: String(leaves.length), color: leaves.length > 0 ? 'text-accent-red' : 'text-text-muted' },
           ].map(({ id, icon: Icon, label, value, color }) => (
             <div key={id} id={id} className="stat-card">
               <div className="flex items-center gap-2 mb-2">
