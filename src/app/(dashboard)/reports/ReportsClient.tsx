@@ -338,17 +338,17 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
               <div className="p-12 text-center text-text-muted text-sm">No sessions found for {monthLabel}.</div>
             ) : (
               <>
-                {/* Mobile: card per row */}
-                <div className="sm:hidden divide-y divide-border/50">
+                {/* Mobile: card per row — scrollable */}
+                <div className="sm:hidden overflow-y-auto max-h-[400px] divide-y divide-border/50">
                   {sessions.map((s, i) => {
                     const breakSec = calcTotalBreakSeconds(s.break_sessions)
                     const otSec = intervalToSeconds(s.overtime)
                     return (
                       <div key={s.id} className={`px-4 py-3 space-y-2 ${i % 2 === 0 ? '' : 'bg-bg-surface/30'}`}>
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-sm">{format(new Date(s.check_in_time), 'EEE, MMM d')}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-sm whitespace-nowrap">{format(new Date(s.check_in_time), 'EEE, MMM d')}</span>
                           {otSec > 0 && (
-                            <span className="text-[10px] text-accent-green bg-accent-green/10 px-2 py-0.5 rounded-full font-mono">
+                            <span className="text-[10px] text-accent-green bg-accent-green/10 px-2 py-0.5 rounded-full font-mono whitespace-nowrap shrink-0">
                               OT: {formatDuration(otSec)}
                             </span>
                           )}
@@ -356,19 +356,19 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                           <div>
                             <p className="text-[9px] text-text-muted uppercase tracking-widest">Check In</p>
-                            <p className="font-mono text-xs text-accent-green">{format(new Date(s.check_in_time), 'hh:mm a')}</p>
+                            <p className="font-mono text-xs text-accent-green whitespace-nowrap">{format(new Date(s.check_in_time), 'hh:mm a')}</p>
                           </div>
                           <div>
                             <p className="text-[9px] text-text-muted uppercase tracking-widest">Check Out</p>
-                            <p className="font-mono text-xs text-accent-red">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : '—'}</p>
+                            <p className="font-mono text-xs text-accent-red whitespace-nowrap">{s.check_out_time ? format(new Date(s.check_out_time), 'hh:mm a') : '—'}</p>
                           </div>
                           <div>
                             <p className="text-[9px] text-text-muted uppercase tracking-widest">Net Work</p>
-                            <p className="font-mono text-xs">{formatDuration(intervalToSeconds(s.net_time))}</p>
+                            <p className="font-mono text-xs whitespace-nowrap">{formatDuration(intervalToSeconds(s.net_time))}</p>
                           </div>
                           <div>
                             <p className="text-[9px] text-text-muted uppercase tracking-widest">Break</p>
-                            <p className="font-mono text-xs text-accent-yellow">{formatDuration(breakSec)}</p>
+                            <p className="font-mono text-xs text-accent-yellow whitespace-nowrap">{formatDuration(breakSec)}</p>
                           </div>
                         </div>
                       </div>
