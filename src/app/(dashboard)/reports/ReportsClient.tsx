@@ -248,6 +248,7 @@ export default function ReportsClient({ userId, profile }: ReportsClientProps) {
               <span>Export PDF</span>
             </button>
           </div>
+        </div>
 
         {/* Summary Stats — Top row: 4 cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
